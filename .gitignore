@@ -1,0 +1,9 @@
+.cache/
+.gradle/
+.work/
+__pycache__/
+dist/
+local.properties
+**/build/
+smoke/app/src/main/jniLibs/
+smoke/app/src/androidTest/assets/

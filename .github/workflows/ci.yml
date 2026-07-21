@@ -1,0 +1,52 @@
+name: Repository checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Validate scripts
+        run: |
+          bash -n scripts/build-release.sh scripts/verify-elf.sh smoke/gradlew
+          python3 -m compileall -q scripts
+
+      - name: Verify deterministic AAR packaging
+        run: |
+          tmp="$(mktemp -d)"
+          printf 'test-so' > "$tmp/libLiteRt.so"
+          printf 'license' > "$tmp/LICENSE"
+          printf 'third-party' > "$tmp/THIRD_PARTY_LICENSES.txt"
+          for output in first second; do
+            python3 scripts/package_release.py \
+              --shared-library "$tmp/libLiteRt.so" \
+              --source-license "$tmp/LICENSE" \
+              --third-party-licenses "$tmp/THIRD_PARTY_LICENSES.txt" \
+              --notices THIRD_PARTY_NOTICES.md \
+              --validation-report docs/uvr-validation-2.1.5-bss.1.md \
+              --dist-dir "$tmp/$output" \
+              --artifact-version 2.1.5-bss.1 \
+              --litert-version 2.1.5 \
+              --litert-commit 9d26e89d88ef8785b6a1e54ec41ac8add215a125 \
+              --bazel-version 7.7.0 \
+              --ndk-version 25.1.8937393 \
+              --android-api-level 23 >/dev/null
+          done
+          cmp \
+            "$tmp/first/litert-2.1.5-bss.1-android-x86.aar" \
+            "$tmp/second/litert-2.1.5-bss.1-android-x86.aar"
+
+      - name: Check version agreement
+        run: |
+          source config/release.env
+          test "$(cat VERSION)" = "$ARTIFACT_VERSION"

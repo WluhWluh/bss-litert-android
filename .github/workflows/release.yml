@@ -1,0 +1,117 @@
+name: Build and publish LiteRT x86 runtime
+
+on:
+  push:
+    tags: ['v*-bss.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: litert-x86-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        run: test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
+
+      - name: Reclaim runner disk space
+        run: |
+          sudo rm -rf /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          df -h /
+
+      - name: Build and package x86 runtime
+        env:
+          BAZEL_JOBS: 4
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/build-release.sh 2>&1 | tee "$RUNNER_TEMP/litert-x86-build.log"
+          cp "$RUNNER_TEMP/litert-x86-build.log" dist/build.log
+
+      - name: Set up Java for Android smoke test
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: smoke/**/*.gradle.kts
+
+      - name: Prepare smoke test inputs
+        run: |
+          source config/release.env
+          mkdir -p smoke/app/src/main/jniLibs/x86
+          mkdir -p smoke/app/src/androidTest/assets
+          cp "dist/libLiteRt-${ARTIFACT_VERSION}-android-x86.so" \
+            smoke/app/src/main/jniLibs/x86/libLiteRt.so
+          cp .work/litert-src/litert/test/testdata/simple_add_dynamic_shape.tflite \
+            smoke/app/src/androidTest/assets/simple_add_dynamic_shape.tflite
+          chmod +x smoke/gradlew
+
+      - name: Run API 26 pure x86 smoke test
+        uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 26
+          target: default
+          arch: x86
+          profile: Nexus 6
+          cores: 4
+          ram-size: 2048M
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none
+          script: |
+            cd smoke
+            ./gradlew assembleDebug assembleDebugAndroidTest --stacktrace
+            adb install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
+            adb install --no-streaming -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -r \
+              -e class io.github.wluhwluh.bss.litert.smoke.LiteRtX86SmokeTest \
+              io.github.wluhwluh.bss.litert.smoke.test/androidx.test.runner.AndroidJUnitRunner \
+              | tee ../dist/api26-x86-smoke.txt
+            grep -Fq 'OK (1 test)' ../dist/api26-x86-smoke.txt
+
+      - name: Finalize checksums
+        run: |
+          python3 scripts/write_checksums.py dist
+          sha256sum -c dist/SHA256SUMS
+
+      - name: Attest native artifacts
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            dist/*.so
+            dist/*.aar
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: litert-${{ github.sha }}-android-x86
+          path: dist/*
+          if-no-files-found: error
+          archive: false
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "LiteRT $(cat VERSION) Android x86 runtime" \
+            --notes-file RELEASE_NOTES.md
