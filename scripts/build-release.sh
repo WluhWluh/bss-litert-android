@@ -83,12 +83,12 @@ find "${source_dir}" -type f \
     -exec sed -i 's/\r$//' {} +
 
 patch_file="${repo_root}/patches/litert-2.1.5-x86.patch"
-if patch --batch --reverse --dry-run --silent -d "${source_dir}" -p1 \
+if patch --force --reverse --dry-run --silent -d "${source_dir}" -p1 \
     < "${patch_file}" >/dev/null 2>&1; then
     :
-elif patch --batch --forward --dry-run --silent -d "${source_dir}" -p1 \
+elif patch --force --dry-run --silent -d "${source_dir}" -p1 \
     < "${patch_file}" >/dev/null 2>&1; then
-    patch --batch --forward --silent -d "${source_dir}" -p1 < "${patch_file}"
+    patch --force --silent -d "${source_dir}" -p1 < "${patch_file}"
 else
     echo "LiteRT source does not match the expected patch state." >&2
     exit 1
