@@ -38,6 +38,8 @@ jobs:
         env:
           BAZEL_JOBS: 4
         run: |
+          set -o pipefail
+          unset ANDROID_NDK_HOME ANDROID_NDK_ROOT
           chmod +x scripts/*.sh
           ./scripts/build-release.sh 2>&1 | tee "$RUNNER_TEMP/litert-x86-build.log"
           cp "$RUNNER_TEMP/litert-x86-build.log" dist/build.log
