@@ -101,7 +101,7 @@ jobs:
           name: litert-${{ github.sha }}-android-x86
           path: dist/*
           if-no-files-found: error
-          archive: false
+          compression-level: 0
 
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
