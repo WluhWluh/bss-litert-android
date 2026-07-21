@@ -86,7 +86,7 @@ jobs:
       - name: Finalize checksums
         run: |
           python3 scripts/write_checksums.py dist
-          sha256sum -c dist/SHA256SUMS
+          (cd dist && sha256sum -c SHA256SUMS)
 
       - name: Attest native artifacts
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
