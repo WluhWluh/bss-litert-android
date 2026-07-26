@@ -72,6 +72,13 @@ Full 9662 and KARA validation for the first release is recorded in
 `docs/uvr-validation-2.1.5-bss.1.md`. Automated UVR smoke will be enabled after
 the model repository publishes immutable release URLs and hashes.
 
+## Diagnostic experiments
+
+The [OpenCL queue-window experiment](experiments/opencl-queue-window/README.md)
+builds a separate arm64 diagnostic AAR for measuring foreground GPU queue
+contention. It is not part of the x86 release, is not a supported runtime, and
+must not be published under the x86 release workflow.
+
 ## License
 
 Repository-authored scripts and documentation use Apache-2.0. Release binaries
