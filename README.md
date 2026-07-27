@@ -90,6 +90,15 @@ commit-pinned alpha artifacts, but no stable complete-runtime release will be
 published until an upstream stable tag contains the source-buildable GPU
 accelerator.
 
+The source-available CPU and API matrix can be built with:
+
+```bash
+./scripts/build-complete-runtime.sh --available-components
+```
+
+`--complete` additionally requires the locked public ML Drift source and
+fails before fetching or compiling when that source gate is not satisfied.
+
 ## Diagnostic experiments
 
 The [OpenCL queue-window experiment](experiments/opencl-queue-window/README.md)

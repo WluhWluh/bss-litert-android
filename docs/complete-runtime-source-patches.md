@@ -19,6 +19,10 @@ source modification path for the complete runtime. It targets LiteRT commit
 4. `0004-core-kotlin-api.patch` adds a pure Booming SS API target and minimal
    manifest without model providers, copied TensorFlow Lite Interpreter
    classes, Play AI Delivery, or an ABI-specific JNI dependency.
+5. `0005-android-toolchain-config.patch` fixes the native API level at 23 and
+   enables the current Android C++ and Android toolchain resolution for all
+   four packaged ABIs. The x86 build additionally disables unsupported
+   XNNPACK AVX-VNNI, AVX512 FP16, and AMX variants at invocation time.
 
 `commandQueueWindowSize` accepts values from 0 through 1024. Zero is the
 default and executes the existing dispatch path without creating an event or

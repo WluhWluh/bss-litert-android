@@ -1,8 +1,16 @@
 diff --git a/litert/kotlin/BUILD b/litert/kotlin/BUILD
-index c28f2f2d..f1639acf 100644
+index c28f2f2d..e63aa1c7 100644
 --- a/litert/kotlin/BUILD
 +++ b/litert/kotlin/BUILD
-@@ -299,6 +299,15 @@ LITERT_KOTLIN_SRCS_ALL = [
+@@ -16,6 +16,7 @@ load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+ load("@build_bazel_rules_android//android:rules.bzl", "android_library")
+ load("@rules_cc//cc:cc_library.bzl", "cc_library")
+ load("@rules_kotlin//kotlin:android.bzl", "kt_android_library")
++load("@rules_kotlin//kotlin:core.bzl", "kt_kotlinc_options")
+ load(
+     "//litert/build_common:special_rule.bzl",
+     "litert_android_linkopts",
+@@ -299,6 +300,15 @@ LITERT_KOTLIN_SRCS_ALL = [
      "src/main/kotlin/com/google/ai/edge/litert/deployment/AiPackModelProvider.kt",
  ]
  
@@ -18,10 +26,15 @@ index c28f2f2d..f1639acf 100644
  LITERT_KOTLIN_DEPS = [
      "@litert_maven//:com_google_android_play_ai_delivery",
      "@litert_maven//:com_google_guava_guava",
-@@ -346,6 +355,17 @@ kt_android_library(
+@@ -346,6 +356,23 @@ kt_android_library(
      ],
  )
  
++kt_kotlinc_options(
++    name = "bss_litert_kotlinc_options",
++    jvm_target = "17",
++)
++
 +# Core Android API used by Booming SS. This intentionally excludes model
 +# providers, Play AI Delivery adapters, and copied TensorFlow Lite APIs.
 +kt_android_library(
@@ -29,6 +42,7 @@ index c28f2f2d..f1639acf 100644
 +    srcs = BSS_LITERT_KOTLIN_SRCS,
 +    exports_manifest = 1,
 +    javacopts = ["--release 17"],
++    kotlinc_opts = ":bss_litert_kotlinc_options",
 +    manifest = "src/core/AndroidManifest.xml",
 +    visibility = ["//visibility:public"],
 +)
@@ -36,18 +50,6 @@ index c28f2f2d..f1639acf 100644
  # TODO(niuchl): Remove this alias once the internal references are updated to the new target.
  alias(
      name = "litert_kotlin_api",
-@@ -409,6 +429,11 @@ aar_with_jni(
-     # copybara:uncomment third_party_notice = "//litert/kotlin/google/third_party_licenses:res/raw/third_party_licenses",
- )
- 
-+aar_with_jni(
-+    name = "litert-bss-api-aar",
-+    android_library = ":litert_bss_api_no_jni",
-+)
-+
- # bazel build --config=android_arm64 --android_ndk_min_sdk_version=23 \
- #   --define=public_maven_build=true \
- #   //litert/kotlin:litert-aar
 diff --git a/litert/kotlin/src/core/AndroidManifest.xml b/litert/kotlin/src/core/AndroidManifest.xml
 new file mode 100644
 index 00000000..1e6172f6

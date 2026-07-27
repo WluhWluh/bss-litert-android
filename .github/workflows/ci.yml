@@ -26,8 +26,17 @@ jobs:
 
       - name: Validate scripts
         run: |
-          bash -n scripts/build-release.sh scripts/verify-elf.sh smoke/gradlew
+          bash -n \
+            scripts/build-complete-runtime.sh \
+            scripts/build-release.sh \
+            scripts/verify-elf.sh \
+            smoke/gradlew
           python3 -m compileall -q scripts
+
+      - name: Test complete runtime assembly
+        run: |
+          python3 scripts/verify_complete_source_lock.py
+          python3 -m unittest discover -s tests -v
 
       - name: Verify complete runtime contract
         run: |

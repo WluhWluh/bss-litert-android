@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import struct
 import subprocess
 import tempfile
 import zipfile
@@ -19,7 +20,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("contracts/complete-runtime-contract.json"),
     )
-    parser.add_argument("--mode", choices=("reference", "complete"), required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("reference", "api", "complete"),
+        required=True,
+    )
     parser.add_argument("--javap", default="javap")
     return parser.parse_args()
 
@@ -63,9 +68,26 @@ def inspect_api(
     return errors
 
 
+def inspect_bytecode_target(classes_jar: Path, jvm_target: int) -> list[str]:
+    expected_major = jvm_target + 44
+    with zipfile.ZipFile(classes_jar) as archive:
+        for name in sorted(archive.namelist()):
+            if not name.endswith(".class"):
+                continue
+            data = archive.read(name)
+            if len(data) < 8 or data[:4] != b"\xca\xfe\xba\xbe":
+                return [f"Invalid JVM class file: {name}"]
+            major = struct.unpack(">H", data[6:8])[0]
+            if major != expected_major:
+                return [
+                    f"Unexpected JVM bytecode target for {name}: "
+                    f"class major {major}, expected {expected_major}"
+                ]
+    return []
+
+
 def inspect_complete_archive(
     aar_entries: set[str],
-    classes_jar: Path,
     contract: dict,
 ) -> list[str]:
     errors: list[str] = []
@@ -84,14 +106,6 @@ def inspect_complete_archive(
     for entry in sorted(actual_native - expected_native):
         errors.append(f"Unexpected native library is packaged: {entry}")
 
-    with zipfile.ZipFile(classes_jar) as archive:
-        class_entries = {
-            entry for entry in archive.namelist() if entry.endswith(".class")
-        }
-    for prefix in contract["api"]["forbiddenClassPrefixes"]:
-        matches = sorted(entry for entry in class_entries if entry.startswith(prefix))
-        if matches:
-            errors.append(f"Forbidden API is packaged: {matches[0]}")
     return errors
 
 
@@ -114,12 +128,35 @@ def main() -> int:
 
         if classes_jar.is_file():
             required_members = dict(contract["api"]["requiredMembers"])
-            if args.mode == "complete":
-                for class_name, members in contract["api"]["bssExtensionMembers"].items():
+            if args.mode in ("api", "complete"):
+                for class_name, members in contract["api"][
+                    "bssExtensionMembers"
+                ].items():
                     required_members.setdefault(class_name, []).extend(members)
             errors.extend(inspect_api(classes_jar, required_members, args.javap))
+            if args.mode in ("api", "complete"):
+                errors.extend(
+                    inspect_bytecode_target(
+                        classes_jar,
+                        contract["artifact"]["jvmTarget"],
+                    )
+                )
+                with zipfile.ZipFile(classes_jar) as archive:
+                    class_entries = {
+                        entry
+                        for entry in archive.namelist()
+                        if entry.endswith(".class")
+                    }
+                for prefix in contract["api"]["forbiddenClassPrefixes"]:
+                    matches = sorted(
+                        entry
+                        for entry in class_entries
+                        if entry.startswith(prefix)
+                    )
+                    if matches:
+                        errors.append(f"Forbidden API is packaged: {matches[0]}")
             if args.mode == "complete":
-                errors.extend(inspect_complete_archive(aar_entries, classes_jar, contract))
+                errors.extend(inspect_complete_archive(aar_entries, contract))
 
     if errors:
         for error in errors:

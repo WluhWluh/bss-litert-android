@@ -91,7 +91,7 @@ Infrastructure work proceeds now in this order:
 | 1 | Freeze a stable, source-buildable upstream baseline | Waiting on upstream tag |
 | 2 | Freeze API, JNI, and ABI contracts | Complete |
 | 3 | Implement auditable source patches | Implemented; GPU build blocked by unpublished ML Drift source |
-| 4 | Build one complete multi-ABI AAR from source | Next |
+| 4 | Build one complete multi-ABI AAR from source | CPU/API infrastructure complete; GPU source blocked |
 | 5 | Assemble the Maven Central artifact set | Queued |
 | 6 | Enforce static checks and reproducibility | Queued |
 | 7+ | Device validation, publishing, migration, and F-Droid | After a candidate AAR exists |
@@ -189,22 +189,29 @@ the modified targets without any binary transformation.
 Goal: produce one deterministic AAR containing the supported API and every
 required native library.
 
-- [ ] Build `libLiteRt.so` from source for `arm64-v8a`, `armeabi-v7a`,
+- [x] Build `libLiteRt.so` from source for `arm64-v8a`, `armeabi-v7a`,
       `x86_64`, and `x86`.
-- [ ] Build `liblitert_jni.so` from source for all four ABIs.
+- [x] Build `liblitert_jni.so` from source for all four ABIs.
 - [ ] Build `libLiteRtClGlAccelerator.so` from source for `arm64-v8a` and
       `x86_64`.
-- [ ] Compile the public Java/Kotlin API once and package one canonical
+- [x] Compile the public Java/Kotlin API once and package one canonical
       `classes.jar`.
-- [ ] Add the manifest, consumer ProGuard rules, licenses, and notices.
-- [ ] Assemble a single AAR with deterministic entry order, timestamps,
+- [x] Add the manifest, consumer ProGuard rules, licenses, and notices.
+- [x] Assemble a single AAR with deterministic entry order, timestamps,
       permissions, and compression settings.
-- [ ] Keep the old x86-only release workflow isolated until the complete
+- [x] Keep the old x86-only release workflow isolated until the complete
       runtime workflow has replaced it deliberately.
 - [ ] Scan source and build input directories before packaging; fail if an
       official AAR or unapproved prebuilt `.so` is present.
-- [ ] Upload complete-runtime builds as CI artifacts while Phase 1 remains
+- [x] Upload complete-runtime builds as CI artifacts while Phase 1 remains
       open.
+
+The source-available build was exercised on 2026-07-26 with NDK r25b and
+Bazel 7.7.0. It produced the pure API AAR plus both CPU runtime libraries for
+all four ABIs. The deterministic complete-AAR assembler is covered with a
+synthetic full matrix. The real complete AAR cannot be emitted until the two
+GPU accelerator libraries can be rebuilt from publicly fetchable ML Drift
+source. The input scan will be implemented as part of the Phase 6 policy gate.
 
 Exit condition: a clean runner creates one AAR with exactly the intended API
 and native-library matrix, without consuming the official LiteRT AAR.

@@ -30,7 +30,11 @@
     },
     {
       "file": "0004-core-kotlin-api.patch",
-      "sha256": "04bb62c1b6ec80837971415165a90077ee24dec1ae77d1ee6617eed3144afad2"
+      "sha256": "7300b127b09566764f83ba3b20745c226bf37f861adeff73a59802377c526137"
+    },
+    {
+      "file": "0005-android-toolchain-config.patch",
+      "sha256": "e0a86f5408e5ed4923aa82da620f52d7cd45b4f7c0d28712450b4dad93393f67"
     }
   ]
 }
