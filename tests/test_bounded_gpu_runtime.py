@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -53,6 +54,18 @@ class BoundedGpuRuntimeTest(unittest.TestCase):
         )
         for abi in ("armeabi-v7a", "x86_64", "x86"):
             self.assertEqual(["libLiteRt.so"], self.contract["nativeMatrix"][abi])
+
+    def test_release_workflow_uses_two_clean_builds_and_pinned_actions(self) -> None:
+        workflow = (
+            REPO_ROOT / ".github/workflows/bounded-gpu-runtime.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("tags: ['runtime-v*-bss.*']", workflow)
+        self.assertIn("replica: [a, b]", workflow)
+        self.assertIn("diff -rq candidates/a candidates/b", workflow)
+        self.assertIn("runtime-v${ARTIFACT_VERSION}", workflow)
+        uses = re.findall(r"^\s*uses:\s*[^@\s]+@([^\s#]+)", workflow, re.MULTILINE)
+        self.assertGreaterEqual(len(uses), 6)
+        self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", value) for value in uses))
 
     def test_packaging_is_deterministic_and_removes_unbounded_x86_64_gpu(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -1,14 +1,38 @@
 # Booming SS LiteRT Android runtime builds
 
-This repository produces an unofficial CPU-only LiteRT runtime for Android's
-32-bit `x86` ABI. The official LiteRT 2.1.5 AAR supplies ARM, ARM64, and x86_64
-libraries but does not include x86. Booming SS uses this build only to fill that
-missing ABI.
+This repository produces unofficial Android LiteRT runtimes used by Booming
+SS. It currently maintains two release tracks:
+
+- an x86-only CPU supplement for the official LiteRT 2.1.5 AAR;
+- a GitHub-only multi-ABI AAR whose arm64 GPU path uses the fixed
+  `gpu-opencl-bounded-fp32-v1` profile.
 
 This project is not affiliated with or endorsed by Google or the LiteRT
 project. It contains no music source-separation model weights.
 
-## Release contents
+## Bounded GPU runtime
+
+`io.github.wluhwluh.bss:litert-android:2.1.5-bss.2` is a complete replacement
+for the official LiteRT AAR in Booming SS GitHub builds. Its native matrix is:
+
+- `arm64-v8a`: CPU runtime, GPU accelerator, and fixed N=1 OpenCL shim;
+- `armeabi-v7a`: CPU runtime;
+- `x86_64`: CPU runtime;
+- `x86`: CPU runtime from the source-built `v2.1.5-bss.1` release.
+
+The runtime contract is stored in
+[`contracts/bounded-gpu-runtime-contract.json`](contracts/bounded-gpu-runtime-contract.json).
+Build it on Linux or WSL with:
+
+```bash
+./scripts/build-bounded-gpu-runtime.sh
+```
+
+Outputs are written to `dist/bounded-gpu-runtime/`. The dedicated workflow
+builds the candidate on two clean runners and publishes only byte-identical
+outputs from a tag such as `runtime-v2.1.5-bss.2`.
+
+## x86 supplement contents
 
 Each release publishes:
 
@@ -34,7 +58,7 @@ app/src/main/jniLibs/x86/libLiteRt.so
 Do not add `pickFirst` for this library. A duplicate x86 runtime after a future
 official LiteRT upgrade should fail the build and force an explicit review.
 
-## Reproducible build
+## x86 supplement build
 
 The build is pinned in `config/release.env` and currently uses:
 
