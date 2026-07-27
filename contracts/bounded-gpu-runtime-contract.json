@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "bss-litert-bounded-gpu-runtime-v1",
+  "coordinate": "io.github.wluhwluh.bss:litert-android:2.1.5-bss.2",
+  "baseLiteRtVersion": "2.1.5",
+  "androidMinApi": 26,
+  "capability": {
+    "schemaVersion": 1,
+    "artifactVersion": "2.1.5-bss.2",
+    "profileId": "gpu-opencl-bounded-fp32-v1",
+    "precision": "FP32",
+    "backend": "OpenCL",
+    "kernelBatchSize": 1,
+    "commandQueueWindowSize": 1
+  },
+  "nativeMatrix": {
+    "arm64-v8a": [
+      "libLiteRt.so",
+      "libLiteRtClGlAccelerator.so",
+      "libBssOcl.so"
+    ],
+    "armeabi-v7a": [
+      "libLiteRt.so"
+    ],
+    "x86_64": [
+      "libLiteRt.so"
+    ],
+    "x86": [
+      "libLiteRt.so"
+    ]
+  },
+  "gpuEligibleAbis": [
+    "arm64-v8a"
+  ],
+  "removedOfficialComponents": [
+    "jni/x86_64/libLiteRtClGlAccelerator.so"
+  ]
+}
