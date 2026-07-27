@@ -93,7 +93,7 @@ Infrastructure work proceeds now in this order:
 | 3 | Implement auditable source patches | Implemented; GPU build blocked by unpublished ML Drift source |
 | 4 | Build one complete multi-ABI AAR from source | CPU/API infrastructure complete; GPU source blocked |
 | 5 | Assemble the Maven Central artifact set | Infrastructure complete; complete signed candidate awaits GPU source |
-| 6 | Enforce static checks and reproducibility | Infrastructure implemented; independent clean-build run pending |
+| 6 | Enforce static checks and reproducibility | Source-available path complete; full GPU rerun follows Phase 1 |
 | 7+ | Device validation, publishing, migration, and F-Droid | After a candidate AAR exists |
 
 Phases 2 through 6 form the current implementation tranche. They should land
@@ -277,7 +277,7 @@ Goal: make provenance, ABI drift, and nondeterminism release blockers.
       `.so` files, official AARs, and binary-patch outputs.
 - [x] Validate POM, Gradle metadata, checksums, signatures, SBOMs, source JAR,
       Javadoc JAR, and license attachments.
-- [ ] Build twice in independent clean workspaces or runners and compare every
+- [x] Build twice in independent clean workspaces or runners and compare every
       publication file byte for byte.
 - [x] Fail with a file-level report if native outputs differ so embedded paths,
       timestamps, random IDs, nondeterministic archive order, or toolchain
@@ -296,6 +296,23 @@ The source-available CPU/API path now enforces these gates. The GPU ELF policy
 remains explicitly provisional until Phase 1 permits a source-built GPU
 artifact; that first artifact must confirm or deliberately revise the recorded
 GPU SONAME and dependency set.
+
+The local source-available validation on 2026-07-26 built the four CPU/JNI ABI
+pairs twice from independent source and Bazel output directories. Both runs
+produced eight validated ELF files, five clean action-input audits, the same
+dependency graph, and notices collected from 280 resolved license files. The
+comparison covered 72 deterministic build/staging files and 45 Maven files;
+there were no changed or missing files. The second staging repository contained
+and cryptographically verified all nine detached payload signatures. A real
+signed Maven bundle was then assembled twice from that repository and was
+byte-identical. The final publication normalization and evidence were run at
+`9f57b2e`; the native build inputs were unchanged from the immediately
+preceding clean-build baseline `f8860da`.
+
+This completes the Phase 6 infrastructure and source-available acceptance run.
+It does not satisfy the complete-AAR exit condition by itself: after Phase 1
+unblocks source-built GPU libraries, the same two-build gate must run again in
+`--complete` mode before a release candidate can proceed to Phase 7.
 
 Exit condition: two clean builds produce byte-identical AAR and Maven payloads,
 and all static policy checks pass.
