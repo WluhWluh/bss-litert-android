@@ -99,6 +99,30 @@ The source-available CPU and API matrix can be built with:
 `--complete` additionally requires the locked public ML Drift source and
 fails before fetching or compiling when that source gate is not satisfied.
 
+## Maven staging
+
+The publication project prepares the future coordinate without contacting
+Maven Central. Given a complete-runtime build directory and its checked-out
+LiteRT source, run:
+
+```bash
+./scripts/stage-maven-publication.sh \
+  --runtime-dist dist/complete-runtime \
+  --litert-source .work/complete-runtime/litert-source \
+  --output-dir dist/maven-staging
+```
+
+The script prepares deterministic AAR, source, API documentation, SBOM,
+manifest, notice, POM, and Gradle metadata files; stages them in a local Maven
+repository; validates the payload; and compiles the Kotlin consumer fixture by
+resolving `io.github.wluhwluh.bss:litert-android` from that repository.
+
+Set `MAVEN_SIGNING_KEY` and `MAVEN_SIGNING_PASSWORD` to add detached OpenPGP
+signatures. Unsigned staging is supported only for local and CI validation.
+Until source-buildable GPU inputs are available, the manual complete-runtime
+workflow uses `--allow-api-only` to exercise publication plumbing without
+creating a publishable runtime.
+
 ## Diagnostic experiments
 
 The [OpenCL queue-window experiment](experiments/opencl-queue-window/README.md)

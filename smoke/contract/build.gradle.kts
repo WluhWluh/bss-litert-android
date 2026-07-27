@@ -25,10 +25,13 @@ android {
 
 dependencies {
     val candidateAar = providers.gradleProperty("litertContractAar").orNull
-    if (candidateAar == null) {
-        compileOnly("com.google.ai.edge.litert:litert:2.1.5")
-    } else {
+    val stagingVersion = providers.gradleProperty("litertStagingVersion").orNull
+    if (candidateAar != null) {
         compileOnly(files(candidateAar))
         compileOnly("org.jetbrains.kotlin:kotlin-stdlib:2.3.21")
+    } else if (stagingVersion != null) {
+        compileOnly("io.github.wluhwluh.bss:litert-android:$stagingVersion")
+    } else {
+        compileOnly("com.google.ai.edge.litert:litert:2.1.5")
     }
 }

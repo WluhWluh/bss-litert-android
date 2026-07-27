@@ -9,6 +9,9 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        providers.gradleProperty("litertStagingRepository").orNull?.let {
+            maven { url = uri(it) }
+        }
         google()
         mavenCentral()
     }

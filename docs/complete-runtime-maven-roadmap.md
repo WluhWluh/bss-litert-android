@@ -1,6 +1,6 @@
 # Complete LiteRT Android runtime and Maven Central roadmap
 
-Status: planned
+Status: implementation in progress
 
 This roadmap evolves this repository from the existing supplemental Android
 `x86` CPU runtime into a complete, source-built LiteRT distribution for
@@ -92,7 +92,7 @@ Infrastructure work proceeds now in this order:
 | 2 | Freeze API, JNI, and ABI contracts | Complete |
 | 3 | Implement auditable source patches | Implemented; GPU build blocked by unpublished ML Drift source |
 | 4 | Build one complete multi-ABI AAR from source | CPU/API infrastructure complete; GPU source blocked |
-| 5 | Assemble the Maven Central artifact set | Queued |
+| 5 | Assemble the Maven Central artifact set | Infrastructure complete; complete signed candidate awaits GPU source |
 | 6 | Enforce static checks and reproducibility | Queued |
 | 7+ | Device validation, publishing, migration, and F-Droid | After a candidate AAR exists |
 
@@ -230,20 +230,36 @@ litert-android-<version>.pom
 Gradle module metadata
 ```
 
-- [ ] Configure Gradle `maven-publish` and `signing`; use the Vanniktech Maven
-      Publish plugin if it reduces custom publication logic.
-- [ ] Put the supported Java/Kotlin API sources in `sources.jar`. Publish the
+- [x] Configure Gradle `maven-publish` and `signing`. The built-in plugins keep
+      the publication graph small; no additional publishing plugin is needed.
+- [x] Put the supported Java/Kotlin API sources in `sources.jar`. Publish the
       native source lock, patch series, and rebuild manifest with the GitHub
       Release rather than embedding an entire upstream checkout in that JAR.
-- [ ] Generate valid Javadoc or Dokka output for the supported API.
-- [ ] Ensure the POM has no dependency on the official LiteRT artifact or Play
+- [x] Generate deterministic API documentation for the supported API and
+      package it as the required Javadoc JAR.
+- [x] Ensure the POM has no dependency on the official LiteRT artifact or Play
       AI Delivery.
-- [ ] Generate SHA-256 files, detached OpenPGP signatures, SPDX or CycloneDX
-      SBOMs, a build manifest, patch hashes, and complete third-party notices.
-- [ ] Make publication metadata suitable for the future
+- [x] Generate SHA-256 files, detached OpenPGP signatures when release signing
+      credentials are supplied, a CycloneDX 1.6 SBOM, a build manifest, patch
+      hashes, and complete third-party notices.
+- [x] Make publication metadata suitable for the future
       `io.github.wluhwluh.bss` namespace.
-- [ ] Add a local staging repository task so CI can validate the exact Maven
-      payload without Central credentials.
+- [x] Add a local staging repository task and an end-to-end staging script so
+      CI can validate the exact Maven payload without Central credentials.
+- [x] Resolve the staged coordinate from the Kotlin consumer fixture. Before
+      the GPU source gate clears, CI performs this check with a clearly marked
+      API-only fixture and must never publish that fixture.
+
+The staging pipeline generates SHA-256 files, detached OpenPGP signatures,
+CycloneDX metadata, a normalized build manifest, patch hashes, and complete
+third-party notices. Signing is deliberately optional for local development
+and mandatory for a release candidate. Phase 6 verifies signatures rather
+than merely checking that `.asc` files exist.
+
+The full Phase 5 exit condition remains gated on a complete AAR: the local
+repository infrastructure and consumer test pass today, while the first
+complete signed payload cannot exist until Phase 1 supplies source-buildable
+GPU inputs.
 
 Exit condition: the local staging repository can be consumed by the Booming SS
 compile fixture and contains every attachment Maven Central requires.

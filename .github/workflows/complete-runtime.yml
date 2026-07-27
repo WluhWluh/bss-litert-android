@@ -51,6 +51,15 @@ jobs:
           chmod +x scripts/build-complete-runtime.sh
           ./scripts/build-complete-runtime.sh --available-components
 
+      - name: Stage and consume API-only Maven fixture
+        run: |
+          chmod +x scripts/stage-maven-publication.sh smoke/gradlew
+          ./scripts/stage-maven-publication.sh \
+            --runtime-dist "${BSS_COMPLETE_DIST_DIR}" \
+            --litert-source "${BSS_COMPLETE_WORK_DIR}/litert-source" \
+            --output-dir "${BSS_COMPLETE_DIST_DIR}/maven-publication" \
+            --allow-api-only
+
       - name: Upload source-available components
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
