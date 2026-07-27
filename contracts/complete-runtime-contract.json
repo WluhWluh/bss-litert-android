@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "artifact": {
+    "group": "io.github.wluhwluh.bss",
+    "name": "litert-android",
+    "minSdk": 23,
+    "jvmTarget": 17,
+    "kotlinCompilerVersion": "2.3.21"
+  },
+  "consumer": {
+    "repository": "https://github.com/WluhWluh/BoomingSS",
+    "commit": "05c1d6b6e28ee666e488e38d43340f600fd04a6f"
+  },
+  "upstream": {
+    "repository": "https://github.com/google-ai-edge/LiteRT",
+    "alphaCommit": "876f8a675d1cb15b83214a59073d47390d8dd6aa",
+    "minimumGpuOssCommit": "876f8a675d1cb15b83214a59073d47390d8dd6aa"
+  },
+  "referenceAar": {
+    "coordinate": "com.google.ai.edge.litert:litert:2.1.5",
+    "sha256": "a162d1ddbdad87c002b7ec7eb31a703f2761335e693f292f94091b3569d8aa37"
+  },
+  "nativeLibraries": {
+    "liblitert_jni.so": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86_64",
+      "x86"
+    ],
+    "libLiteRt.so": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86_64",
+      "x86"
+    ],
+    "libLiteRtClGlAccelerator.so": [
+      "arm64-v8a",
+      "x86_64"
+    ]
+  },
+  "api": {
+    "requiredMembers": {
+      "com.google.ai.edge.litert.Accelerator": [
+        "Accelerator CPU",
+        "Accelerator GPU"
+      ],
+      "com.google.ai.edge.litert.Environment": [
+        "getAvailableAccelerators()",
+        "Environment create()"
+      ],
+      "com.google.ai.edge.litert.CompiledModel": [
+        "createInputBuffers()",
+        "createOutputBuffers()",
+        "getInputBufferRequirements(java.lang.String, java.lang.String)",
+        "getOutputBufferRequirements(java.lang.String, java.lang.String)",
+        "getInputTensorType(java.lang.String, java.lang.String)",
+        "getOutputTensorType(java.lang.String, java.lang.String)",
+        "run(java.util.List<com.google.ai.edge.litert.TensorBuffer>, java.util.List<com.google.ai.edge.litert.TensorBuffer>)",
+        "CompiledModel create(java.lang.String, com.google.ai.edge.litert.CompiledModel$Options, com.google.ai.edge.litert.Environment)"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$Options": [
+        "Options(com.google.ai.edge.litert.Accelerator...)",
+        "setCpuOptions(com.google.ai.edge.litert.CompiledModel$CpuOptions)",
+        "setGpuOptions(com.google.ai.edge.litert.CompiledModel$GpuOptions)"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$CpuOptions": [
+        "CpuOptions(java.lang.Integer, java.lang.Integer, java.lang.String)"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$GpuOptions": [
+        "getPrecision()",
+        "getBackend()",
+        "getPriority()",
+        "getNumStepsOfCommandBufferPreparations()"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$GpuOptions$Precision": [
+        "Precision FP16",
+        "Precision FP32"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$GpuOptions$Backend": [
+        "Backend AUTOMATIC",
+        "Backend OPENCL",
+        "Backend OPENGL"
+      ],
+      "com.google.ai.edge.litert.CompiledModel$GpuOptions$Priority": [
+        "Priority LOW",
+        "Priority NORMAL",
+        "Priority HIGH"
+      ],
+      "com.google.ai.edge.litert.TensorBuffer": [
+        "writeFloat(float[])",
+        "readFloat()"
+      ],
+      "com.google.ai.edge.litert.TensorBufferRequirements": [
+        "getBufferSize()"
+      ],
+      "com.google.ai.edge.litert.TensorType": [
+        "getElementType()",
+        "getLayout()"
+      ],
+      "com.google.ai.edge.litert.TensorType$Layout": [
+        "getDimensions()",
+        "getHasStrides()"
+      ],
+      "com.google.ai.edge.litert.TensorType$ElementType": [
+        "ElementType FLOAT"
+      ]
+    },
+    "bssExtensionMembers": {
+      "com.google.ai.edge.litert.CompiledModel$GpuOptions": [
+        "getKernelBatchSize()",
+        "getCommandQueueWindowSize()"
+      ]
+    },
+    "forbiddenClassPrefixes": [
+      "com/google/ai/edge/litert/ModelProvider",
+      "com/google/ai/edge/litert/deployment/AiPackModelProvider",
+      "org/tensorflow/lite/"
+    ]
+  },
+  "jni": {
+    "requiredSymbolsFile": "contracts/jni-required-symbols.txt",
+    "gpuAcceleratorSymbol": "LiteRtAcceleratorImpl"
+  },
+  "forbiddenDependencies": [
+    "com.google.ai.edge.litert:litert",
+    "com.google.android.play:ai-delivery"
+  ]
+}

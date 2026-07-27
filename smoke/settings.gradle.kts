@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LiteRtX86Smoke"
 include(":app")
+include(":contract")

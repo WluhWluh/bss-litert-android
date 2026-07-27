@@ -26,10 +26,10 @@ runtime needed by Booming SS:
 
 - `classes.jar` with the required `CompiledModel`, `Environment`,
   `TensorBuffer`, accelerator configuration, and related API classes.
-- `arm64-v8a`: CPU runtime and GPU accelerator.
-- `armeabi-v7a`: CPU runtime.
-- `x86_64`: CPU runtime and GPU accelerator.
-- `x86`: CPU runtime.
+- `arm64-v8a`: API JNI, CPU runtime, and GPU accelerator.
+- `armeabi-v7a`: API JNI and CPU runtime.
+- `x86_64`: API JNI, CPU runtime, and GPU accelerator.
+- `x86`: API JNI and CPU runtime.
 - Android manifest metadata, consumer ProGuard rules, Apache-2.0 license, and
   complete third-party notices.
 
@@ -181,6 +181,7 @@ required native library.
 
 - [ ] Build `libLiteRt.so` from source for `arm64-v8a`, `armeabi-v7a`,
       `x86_64`, and `x86`.
+- [ ] Build `liblitert_jni.so` from source for all four ABIs.
 - [ ] Build `libLiteRtClGlAccelerator.so` from source for `arm64-v8a` and
       `x86_64`.
 - [ ] Compile the public Java/Kotlin API once and package one canonical

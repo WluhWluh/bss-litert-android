@@ -16,10 +16,31 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: smoke/**/*.gradle.kts
+
       - name: Validate scripts
         run: |
           bash -n scripts/build-release.sh scripts/verify-elf.sh smoke/gradlew
           python3 -m compileall -q scripts
+
+      - name: Verify complete runtime contract
+        run: |
+          source config/complete-runtime.env
+          reference="$RUNNER_TEMP/litert-${REFERENCE_LITERT_VERSION}.aar"
+          curl -fL --retry 3 "$REFERENCE_LITERT_AAR_URL" -o "$reference"
+          echo "$REFERENCE_LITERT_AAR_SHA256  $reference" | sha256sum -c -
+          python3 scripts/verify-runtime-contract.py \
+            --aar "$reference" \
+            --contract contracts/complete-runtime-contract.json \
+            --mode reference
+          chmod +x smoke/gradlew
+          ./smoke/gradlew -p smoke :contract:compileDebugKotlin --stacktrace
 
       - name: Verify deterministic AAR packaging
         run: |
