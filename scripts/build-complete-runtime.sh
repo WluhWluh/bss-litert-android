@@ -18,20 +18,26 @@ dist_dir="${BSS_COMPLETE_DIST_DIR:-${repo_root}/dist/complete-runtime}"
 source_dir="${work_dir}/litert-source"
 component_dir="${dist_dir}/components"
 native_dir="${component_dir}/native"
+action_audit_report="${dist_dir}/bazel-action-input-audit.txt"
+dependency_graph="${dist_dir}/dependency-graph.txt"
 output_user_root="${work_dir}/bazel-output"
 repository_cache="${cache_dir}/bazel-repository-cache"
 jobs="${BAZEL_JOBS:-4}"
 
-for command in curl find git grep install javap python3 sha256sum; do
+for command in curl find git grep install javap python3 sha256sum sort; do
   command -v "${command}" >/dev/null || {
     echo "Required command not found: ${command}" >&2
     exit 1
   }
 done
 
-python3 "${repo_root}/scripts/verify_complete_source_lock.py"
+python3 "${repo_root}/scripts/verify_complete_source_lock.py" \
+  --lock "${repo_root}/config/complete-runtime-source-lock.json" \
+  --patch-dir "${repo_root}/patches/complete-runtime"
 if [[ "${mode}" == "complete" ]]; then
   python3 "${repo_root}/scripts/verify_complete_source_lock.py" \
+    --lock "${repo_root}/config/complete-runtime-source-lock.json" \
+    --patch-dir "${repo_root}/patches/complete-runtime" \
     --require-gpu-source
 fi
 
@@ -67,6 +73,8 @@ if [[ -d "${dist_dir}" ]] && find "${dist_dir}" -mindepth 1 -print -quit | grep 
 fi
 mkdir -p "${work_dir}" "${cache_dir}" "${component_dir}" \
   "${native_dir}" "${repository_cache}"
+: > "${action_audit_report}"
+: > "${dependency_graph}"
 
 bazel_bin="${BAZEL:-${cache_dir}/bazel-${BAZEL_VERSION}-linux-x86_64}"
 if [[ ! -f "${bazel_bin}" ]]; then
@@ -89,7 +97,9 @@ git -C "${source_dir}" fetch \
   origin "${LITERT_COMMIT}"
 git -C "${source_dir}" checkout --detach FETCH_HEAD
 python3 "${repo_root}/scripts/apply-complete-runtime-patches.py" \
-  --source "${source_dir}"
+  --source "${source_dir}" \
+  --lock "${repo_root}/config/complete-runtime-source-lock.json" \
+  --patch-dir "${repo_root}/patches/complete-runtime"
 
 export ANDROID_HOME
 export ANDROID_NDK_HOME
@@ -150,6 +160,68 @@ bazel_output() {
     --output=files "${target}"
 }
 
+audit_bazel_action_inputs() {
+  local config="$1"
+  local build_include="$2"
+  local config_args=()
+  shift 2
+  if [[ "${config}" == "android_x86" ]]; then
+    config_args=(
+      "--define=xnn_enable_avxvnni=false"
+      "--define=xnn_enable_avxvnniint8=false"
+      "--define=xnn_enable_avx512fp16=false"
+      "--define=xnn_enable_avx512amx=false"
+    )
+  fi
+  local target_set="${*}"
+  local query
+  query="inputs('(^|/)litert/prebuilt/.*\\.(so|aar)$', deps(set(${target_set})))"
+  local matches
+  matches="$(
+    "${bazel_bin}" "${bazel_startup[@]}" aquery \
+      "${bazel_common[@]}" \
+      "--config=${config}" \
+      "--//litert/build_common:build_include=${build_include}" \
+      "${config_args[@]}" \
+      --output=text "${query}"
+  )"
+  if [[ -n "${matches//[[:space:]]/}" ]]; then
+    echo "Bazel action graph consumes a prebuilt LiteRT binary:" >&2
+    echo "${matches}" >&2
+    exit 1
+  fi
+  printf '%s\t%s\t%s\tclean\n' \
+    "${config}" "${build_include}" "${target_set}" \
+    >> "${action_audit_report}"
+}
+
+record_dependency_graph() {
+  local config="$1"
+  local build_include="$2"
+  local config_args=()
+  shift 2
+  if [[ "${config}" == "android_x86" ]]; then
+    config_args=(
+      "--define=xnn_enable_avxvnni=false"
+      "--define=xnn_enable_avxvnniint8=false"
+      "--define=xnn_enable_avx512fp16=false"
+      "--define=xnn_enable_avx512amx=false"
+    )
+  fi
+  local target_set="${*}"
+  printf 'CONFIG\t%s\t%s\t%s\n' \
+    "${config}" "${build_include}" "${target_set}" \
+    >> "${dependency_graph}"
+  "${bazel_bin}" "${bazel_startup[@]}" cquery \
+    "${bazel_common[@]}" \
+    "--config=${config}" \
+    "--//litert/build_common:build_include=${build_include}" \
+    "${config_args[@]}" \
+    --output=label_kind "deps(set(${target_set}))" \
+    | LC_ALL=C sort \
+    >> "${dependency_graph}"
+}
+
 copy_target_output() {
   local config="$1"
   local build_include="$2"
@@ -170,6 +242,10 @@ copy_target_output() {
 
 cd "${source_dir}"
 bazel_build android_arm64 cpu_only //litert/kotlin:litert_bss_api_no_jni_kt
+audit_bazel_action_inputs android_arm64 cpu_only \
+  //litert/kotlin:litert_bss_api_no_jni_kt
+record_dependency_graph android_arm64 cpu_only \
+  //litert/kotlin:litert_bss_api_no_jni_kt
 copy_target_output android_arm64 cpu_only \
   //litert/kotlin:litert_bss_api_no_jni_kt '\.jar' \
   "${work_dir}/litert-bss-api-classes.jar"
@@ -195,6 +271,12 @@ for index in "${!abis[@]}"; do
   bazel_build "${config}" "${build_include}" \
     //litert/kotlin:litert_jni \
     //litert/kotlin:LiteRt
+  audit_bazel_action_inputs "${config}" "${build_include}" \
+    //litert/kotlin:litert_jni \
+    //litert/kotlin:LiteRt
+  record_dependency_graph "${config}" "${build_include}" \
+    //litert/kotlin:litert_jni \
+    //litert/kotlin:LiteRt
   copy_target_output "${config}" "${build_include}" \
     //litert/kotlin:litert_jni '/liblitert_jni\.so' \
     "${native_dir}/${abi}/liblitert_jni.so"
@@ -211,11 +293,22 @@ if [[ "${mode}" == "complete" ]]; then
     config="${gpu_configs[${index}]}"
     target="//litert/runtime/accelerators/gpu:ml_drift_cl_gl_accelerator_so"
     bazel_build "${config}" gpu "${target}"
+    audit_bazel_action_inputs "${config}" gpu "${target}"
+    record_dependency_graph "${config}" gpu "${target}"
     copy_target_output "${config}" gpu "${target}" \
       '/libLiteRtClGlAccelerator\.so' \
       "${native_dir}/${abi}/libLiteRtClGlAccelerator.so"
   done
 fi
+
+llvm_bin="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+python3 "${repo_root}/scripts/verify_native_artifacts.py" \
+  --native-dir "${native_dir}" \
+  --contract "${repo_root}/contracts/complete-runtime-contract.json" \
+  --mode "${mode}" \
+  --llvm-readobj "${llvm_bin}/llvm-readobj" \
+  --llvm-nm "${llvm_bin}/llvm-nm" \
+  --report "${dist_dir}/native-validation.json"
 
 output_base="$(
   "${bazel_bin}" "${bazel_startup[@]}" info \
@@ -235,6 +328,26 @@ python3 "${repo_root}/scripts/write_component_manifest.py" \
   --mode "${mode}" \
   --output "${dist_dir}/component-manifest.json"
 
+provenance_args=()
+if [[ "${BSS_REQUIRE_CLEAN_BUILD:-0}" == "1" ]]; then
+  provenance_args+=(--require-clean)
+fi
+python3 "${repo_root}/scripts/write_build_provenance.py" \
+  --environment "${repo_root}/config/complete-runtime.env" \
+  --source-lock "${repo_root}/config/complete-runtime-source-lock.json" \
+  --contract "${repo_root}/contracts/complete-runtime-contract.json" \
+  --repository "${repo_root}" \
+  --source-tree "${source_dir}" \
+  --dependency-graph "${dependency_graph}" \
+  --bazel "${bazel_bin}" \
+  --java java \
+  --python python3 \
+  --git git \
+  --ndk-dir "${ANDROID_NDK_HOME}" \
+  --android-sdk "${ANDROID_HOME}" \
+  --output "${dist_dir}/build-provenance.json" \
+  "${provenance_args[@]}"
+
 if [[ "${mode}" == "complete" ]]; then
   python3 "${repo_root}/scripts/package_complete_aar.py" \
     --api-aar "${component_dir}/api/litert-bss-api.aar" \
@@ -249,5 +362,20 @@ if [[ "${mode}" == "complete" ]]; then
     --output "${dist_dir}/litert-android-${ARTIFACT_VERSION}.aar" \
     --manifest-output "${dist_dir}/build-manifest.json"
 fi
+
+candidate_aar="${component_dir}/api/litert-bss-api.aar"
+if [[ "${mode}" == "complete" ]]; then
+  candidate_aar="${dist_dir}/litert-android-${ARTIFACT_VERSION}.aar"
+fi
+python3 "${repo_root}/scripts/audit_release_inputs.py" \
+  --repository "${repo_root}" \
+  --source-tree "${source_dir}" \
+  --component-dir "${component_dir}" \
+  --component-manifest "${dist_dir}/component-manifest.json" \
+  --candidate-aar "${candidate_aar}" \
+  --contract "${repo_root}/contracts/complete-runtime-contract.json" \
+  --source-lock "${repo_root}/config/complete-runtime-source-lock.json" \
+  --mode "${mode}" \
+  --report "${dist_dir}/release-input-audit.json"
 
 printf 'Complete-runtime %s output: %s\n' "${mode}" "${dist_dir}"

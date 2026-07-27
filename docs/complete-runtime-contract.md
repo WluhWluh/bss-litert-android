@@ -34,6 +34,14 @@ runtime implementation. The complete AAR therefore contains:
 The GPU accelerator exports `LiteRtAcceleratorImpl` and is discovered only on
 the two GPU-capable packaged ABIs.
 
+`contracts/complete-runtime-contract.json` also freezes the ELF class,
+machine, Android API note, accepted SONAME, exact `DT_NEEDED` set, required
+runtime symbols, and exact JNI export set. The CPU and JNI values were measured
+from the four source-built ABI outputs. The GPU dependency set is based on the
+pinned official reference library and is marked for confirmation against the
+first source-built GPU candidate; a mismatch must be reviewed rather than
+silently added to the allowlist.
+
 Including the x86 libraries does not declare x86 source separation supported in
 Booming SS. The application retains its own memory and lifecycle gate.
 
@@ -62,3 +70,11 @@ compiled API.
 The Kotlin consumer fixture in `smoke/contract` compiles the same operations used
 by Booming SS. It defaults to the official reference and accepts
 `-PlitertContractAar=<path>` to compile against a locally built candidate.
+
+`scripts/verify_native_artifacts.py` validates every packaged ELF with the
+locked NDK tools and writes a machine-readable report. The build also runs a
+Bazel action query for every target and rejects any dependency path under
+`litert/prebuilt`. `scripts/audit_release_inputs.py` separately verifies that
+upstream binary-looking source files remain Git LFS pointers, repository
+patches are textual, component hashes match their manifest, and candidate AAR
+entries come only from the source-built component directory.

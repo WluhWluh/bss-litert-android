@@ -123,6 +123,25 @@ Until source-buildable GPU inputs are available, the manual complete-runtime
 workflow uses `--allow-api-only` to exercise publication plumbing without
 creating a publishable runtime.
 
+## Release policy checks
+
+Every complete-runtime build now records and enforces:
+
+- the exact ELF ABI, Android API, SONAME, `DT_NEEDED`, JNI, and accelerator
+  symbol contracts;
+- Bazel action graphs that do not consume `litert/prebuilt` libraries;
+- textual source patches and Git LFS-only upstream binary placeholders;
+- component, AAR, POM, Gradle metadata, SBOM, checksum, OpenPGP signature, and
+  license consistency;
+- a sorted target dependency graph, locked tool versions, input hashes, and
+  repository/source commits.
+
+The manual complete-runtime workflow builds and stages the candidate twice in
+independent workspaces, compares all deterministic files, verifies a second
+staging tree signed with an ephemeral test key, and creates a deterministic
+Maven Central upload bundle. OpenPGP signatures are verified but excluded from
+byte comparison because their creation time is intentionally nondeterministic.
+
 ## Diagnostic experiments
 
 The [OpenCL queue-window experiment](experiments/opencl-queue-window/README.md)

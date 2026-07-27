@@ -20,6 +20,10 @@ from prepare_maven_publication import (  # noqa: E402
     read_source_allowlist,
 )
 from verify_maven_staging import verify_checksums  # noqa: E402
+from verify_maven_staging import (  # noqa: E402
+    verify_build_manifest,
+    verify_sbom,
+)
 from write_maven_checksums import main as write_checksums_main  # noqa: E402
 
 
@@ -54,6 +58,60 @@ class MavenPublicationTest(unittest.TestCase):
             )
             self.assertEqual(set(manifest["components"]), {"classes.jar"})
             self.assertEqual(manifest["publicationFixture"], "api-only")
+
+    def test_staged_manifest_and_sbom_match_api_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            aar = root / "litert-android-test.aar"
+            write_archive(
+                aar,
+                {"AndroidManifest.xml": b"manifest", "classes.jar": b"classes"},
+            )
+            contract = json.loads(
+                (REPO_ROOT / "contracts/complete-runtime-contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            source = {
+                "liteRt": {
+                    "repository": "https://example.invalid/LiteRT.git",
+                    "commit": "a" * 40,
+                },
+                "patchSeries": [],
+                "components": {},
+            }
+            manifest = publication_build_manifest(
+                source, contract, "test", aar, allow_api_only=True
+            )
+            manifest_path = root / "build-manifest.json"
+            manifest_path.write_text(
+                json.dumps(manifest), encoding="utf-8", newline="\n"
+            )
+            verified = verify_build_manifest(
+                manifest_path,
+                aar,
+                contract,
+                contract["artifact"]["group"],
+                contract["artifact"]["name"],
+                "test",
+                source,
+                api_only=True,
+            )
+            sbom_path = root / "cyclonedx.json"
+            sbom_path.write_text(
+                json.dumps(
+                    cyclonedx_sbom(
+                        contract["artifact"]["group"],
+                        contract["artifact"]["name"],
+                        "test",
+                        aar,
+                        manifest,
+                    )
+                ),
+                encoding="utf-8",
+                newline="\n",
+            )
+            verify_sbom(sbom_path, aar, verified)
 
     def test_source_allowlist_rejects_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

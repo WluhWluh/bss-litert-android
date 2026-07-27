@@ -38,6 +38,77 @@
       "x86_64"
     ]
   },
+  "nativeValidation": {
+    "androidApi": 23,
+    "abis": {
+      "arm64-v8a": {
+        "class": "64-bit",
+        "machine": "EM_AARCH64"
+      },
+      "armeabi-v7a": {
+        "class": "32-bit",
+        "machine": "EM_ARM"
+      },
+      "x86_64": {
+        "class": "64-bit",
+        "machine": "EM_X86_64"
+      },
+      "x86": {
+        "class": "32-bit",
+        "machine": "EM_386"
+      }
+    },
+    "libraries": {
+      "libLiteRt.so": {
+        "sonames": [
+          "LiteRt",
+          "libLiteRt.so"
+        ],
+        "needed": [
+          "libc.so",
+          "libdl.so",
+          "liblog.so",
+          "libm.so"
+        ],
+        "requiredSymbols": [
+          "LiteRtCreateModelFromBuffer"
+        ]
+      },
+      "liblitert_jni.so": {
+        "sonames": [
+          "litert_jni",
+          "liblitert_jni.so"
+        ],
+        "needed": [
+          "libLiteRt.so",
+          "libandroid.so",
+          "libc.so",
+          "libdl.so",
+          "liblog.so",
+          "libm.so"
+        ],
+        "requiredSymbolsFile": "contracts/jni-required-symbols.txt",
+        "exportedJniSymbolsFile": "contracts/jni-exported-symbols.txt"
+      },
+      "libLiteRtClGlAccelerator.so": {
+        "sonames": [
+          "libLiteRtClGlAccelerator.so"
+        ],
+        "needed": [
+          "libEGL.so",
+          "libGLESv3.so",
+          "libc.so",
+          "libdl.so",
+          "liblog.so",
+          "libm.so"
+        ],
+        "requiredSymbols": [
+          "LiteRtAcceleratorImpl"
+        ],
+        "sourceBuildConfirmationPending": true
+      }
+    }
+  },
   "api": {
     "requiredMembers": {
       "com.google.ai.edge.litert.Accelerator": [

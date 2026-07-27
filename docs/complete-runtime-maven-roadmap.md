@@ -93,7 +93,7 @@ Infrastructure work proceeds now in this order:
 | 3 | Implement auditable source patches | Implemented; GPU build blocked by unpublished ML Drift source |
 | 4 | Build one complete multi-ABI AAR from source | CPU/API infrastructure complete; GPU source blocked |
 | 5 | Assemble the Maven Central artifact set | Infrastructure complete; complete signed candidate awaits GPU source |
-| 6 | Enforce static checks and reproducibility | Queued |
+| 6 | Enforce static checks and reproducibility | Infrastructure implemented; independent clean-build run pending |
 | 7+ | Device validation, publishing, migration, and F-Droid | After a candidate AAR exists |
 
 Phases 2 through 6 form the current implementation tranche. They should land
@@ -268,22 +268,34 @@ compile fixture and contains every attachment Maven Central requires.
 
 Goal: make provenance, ABI drift, and nondeterminism release blockers.
 
-- [ ] Inspect each ELF for architecture, minimum Android API, SONAME, JNI
+- [x] Inspect each ELF for architecture, minimum Android API, SONAME, JNI
       exports, accelerator discovery symbols, and an explicit `NEEDED`
       allowlist.
-- [ ] Reject duplicate ABI entries, unexpected vendor libraries, official
+- [x] Reject duplicate ABI entries, unexpected vendor libraries, official
       LiteRT transitive dependencies, and provider or Play classes.
-- [ ] Scan the complete action inputs and packaging directories for prebuilt
+- [x] Scan the complete action inputs and packaging directories for prebuilt
       `.so` files, official AARs, and binary-patch outputs.
-- [ ] Validate POM, Gradle metadata, checksums, signatures, SBOMs, source JAR,
+- [x] Validate POM, Gradle metadata, checksums, signatures, SBOMs, source JAR,
       Javadoc JAR, and license attachments.
 - [ ] Build twice in independent clean workspaces or runners and compare every
       publication file byte for byte.
-- [ ] If native outputs differ, identify and remove embedded paths, timestamps,
-      random IDs, nondeterministic archive order, or toolchain drift before the
-      phase can pass.
-- [ ] Store the comparison report, tool versions, dependency graph, and input
-      hashes with the candidate artifact.
+- [x] Fail with a file-level report if native outputs differ so embedded paths,
+      timestamps, random IDs, nondeterministic archive order, or toolchain
+      drift can be identified before the phase passes.
+- [x] Store the comparison report, tool versions, dependency graph, action-input
+      audit, input hashes, and deterministic Maven upload bundle with the CI
+      candidate artifact.
+
+Detached OpenPGP signatures and their checksum sidecars are cryptographically
+verified but excluded from byte comparison because OpenPGP records signature
+creation time. Every unsigned payload and deterministic checksum sidecar must
+still be byte-identical. The first staging tree is unsigned; the second uses an
+ephemeral CI key to exercise signing and verification without release secrets.
+
+The source-available CPU/API path now enforces these gates. The GPU ELF policy
+remains explicitly provisional until Phase 1 permits a source-built GPU
+artifact; that first artifact must confirm or deliberately revise the recorded
+GPU SONAME and dependency set.
 
 Exit condition: two clean builds produce byte-identical AAR and Maven payloads,
 and all static policy checks pass.

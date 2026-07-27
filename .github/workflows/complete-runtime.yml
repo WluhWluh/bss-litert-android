@@ -16,9 +16,12 @@ jobs:
     timeout-minutes: 120
     env:
       BAZEL_JOBS: 4
-      BSS_COMPLETE_WORK_DIR: ${{ runner.temp }}/complete-runtime-work
       BSS_COMPLETE_CACHE_DIR: ${{ runner.temp }}/complete-runtime-cache
-      BSS_COMPLETE_DIST_DIR: ${{ runner.temp }}/complete-runtime-dist
+      FIRST_WORK_DIR: ${{ runner.temp }}/complete-runtime-work-first
+      FIRST_DIST_DIR: ${{ runner.temp }}/complete-runtime-dist-first
+      SECOND_WORK_DIR: ${{ runner.temp }}/complete-runtime-work-second
+      SECOND_DIST_DIR: ${{ runner.temp }}/complete-runtime-dist-second
+      REPRODUCIBILITY_DIR: ${{ runner.temp }}/complete-runtime-reproducibility
 
     steps:
       - name: Check out repository
@@ -46,24 +49,87 @@ jobs:
           echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" \
             >> "$GITHUB_ENV"
 
-      - name: Build source-available CPU and API components
+      - name: Build first source-available candidate
         run: |
           chmod +x scripts/build-complete-runtime.sh
-          ./scripts/build-complete-runtime.sh --available-components
+          BSS_COMPLETE_WORK_DIR="${FIRST_WORK_DIR}" \
+          BSS_COMPLETE_DIST_DIR="${FIRST_DIST_DIR}" \
+          BSS_REQUIRE_CLEAN_BUILD=1 \
+            ./scripts/build-complete-runtime.sh --available-components
 
-      - name: Stage and consume API-only Maven fixture
+      - name: Stage and consume first API-only Maven fixture
         run: |
           chmod +x scripts/stage-maven-publication.sh smoke/gradlew
           ./scripts/stage-maven-publication.sh \
-            --runtime-dist "${BSS_COMPLETE_DIST_DIR}" \
-            --litert-source "${BSS_COMPLETE_WORK_DIR}/litert-source" \
-            --output-dir "${BSS_COMPLETE_DIST_DIR}/maven-publication" \
+            --runtime-dist "${FIRST_DIST_DIR}" \
+            --litert-source "${FIRST_WORK_DIR}/litert-source" \
+            --output-dir "${FIRST_DIST_DIR}/maven-publication" \
             --allow-api-only
 
-      - name: Upload source-available components
+      - name: Reclaim first clean workspace
+        run: |
+          test "${FIRST_WORK_DIR}" = "${RUNNER_TEMP}/complete-runtime-work-first"
+          rm -rf -- "${FIRST_WORK_DIR}"
+
+      - name: Build second source-available candidate
+        run: |
+          BSS_COMPLETE_WORK_DIR="${SECOND_WORK_DIR}" \
+          BSS_COMPLETE_DIST_DIR="${SECOND_DIST_DIR}" \
+          BSS_REQUIRE_CLEAN_BUILD=1 \
+            ./scripts/build-complete-runtime.sh --available-components
+
+      - name: Stage signed second API-only Maven fixture
+        run: |
+          export GNUPGHOME="${RUNNER_TEMP}/complete-runtime-test-gnupg"
+          install -d -m 0700 "${GNUPGHOME}"
+          export MAVEN_SIGNING_PASSWORD=test-signing-password
+          gpg --batch --pinentry-mode loopback \
+            --passphrase "${MAVEN_SIGNING_PASSWORD}" \
+            --quick-generate-key \
+            "Booming SS CI test <ci@example.invalid>" rsa2048 sign 1d
+          export MAVEN_SIGNING_KEY="$(
+            gpg --batch --pinentry-mode loopback \
+              --passphrase "${MAVEN_SIGNING_PASSWORD}" \
+              --armor --export-secret-keys ci@example.invalid
+          )"
+          ./scripts/stage-maven-publication.sh \
+            --runtime-dist "${SECOND_DIST_DIR}" \
+            --litert-source "${SECOND_WORK_DIR}/litert-source" \
+            --output-dir "${SECOND_DIST_DIR}/maven-publication" \
+            --allow-api-only
+
+      - name: Compare independent build and Maven trees
+        run: |
+          source config/complete-runtime.env
+          mkdir -p "${REPRODUCIBILITY_DIR}"
+          python3 scripts/compare_release_builds.py \
+            --first-build-dir "${FIRST_DIST_DIR}" \
+            --second-build-dir "${SECOND_DIST_DIR}" \
+            --first-repository \
+              "${FIRST_DIST_DIR}/maven-publication/repository" \
+            --second-repository \
+              "${SECOND_DIST_DIR}/maven-publication/repository" \
+            --group "${MAVEN_GROUP}" \
+            --artifact "${MAVEN_ARTIFACT}" \
+            --version "${ARTIFACT_VERSION}" \
+            --output "${REPRODUCIBILITY_DIR}/reproducibility-report.json"
+          python3 scripts/assemble_maven_bundle.py \
+            --repository "${SECOND_DIST_DIR}/maven-publication/repository" \
+            --group "${MAVEN_GROUP}" \
+            --artifact "${MAVEN_ARTIFACT}" \
+            --version "${ARTIFACT_VERSION}" \
+            --output "${REPRODUCIBILITY_DIR}/maven-central-bundle.zip" \
+            --manifest-output \
+              "${REPRODUCIBILITY_DIR}/maven-central-bundle.json" \
+            --require-signatures
+
+      - name: Upload source-available reproducibility evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: complete-runtime-components-${{ github.sha }}
-          path: ${{ runner.temp }}/complete-runtime-dist/**
+          path: |
+            ${{ env.FIRST_DIST_DIR }}/**
+            ${{ env.SECOND_DIST_DIR }}/**
+            ${{ env.REPRODUCIBILITY_DIR }}/**
           if-no-files-found: error
           compression-level: 0
