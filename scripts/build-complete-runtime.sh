@@ -241,6 +241,11 @@ copy_target_output() {
 }
 
 cd "${source_dir}"
+shutdown_bazel_server() {
+  "${bazel_bin}" "${bazel_startup[@]}" shutdown >/dev/null 2>&1 || true
+}
+trap shutdown_bazel_server EXIT
+
 bazel_build android_arm64 cpu_only //litert/kotlin:litert_bss_api_no_jni_kt
 audit_bazel_action_inputs android_arm64 cpu_only \
   //litert/kotlin:litert_bss_api_no_jni_kt
@@ -378,4 +383,6 @@ python3 "${repo_root}/scripts/audit_release_inputs.py" \
   --mode "${mode}" \
   --report "${dist_dir}/release-input-audit.json"
 
+shutdown_bazel_server
+trap - EXIT
 printf 'Complete-runtime %s output: %s\n' "${mode}" "${dist_dir}"
