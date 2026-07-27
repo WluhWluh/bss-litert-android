@@ -72,6 +72,20 @@ Full 9662 and KARA validation for the first release is recorded in
 `docs/uvr-validation-2.1.5-bss.1.md`. Automated UVR smoke will be enabled after
 the model repository publishes immutable release URLs and hashes.
 
+## Complete runtime roadmap
+
+The current release remains an x86-only supplement to the official LiteRT AAR.
+Future work will replace that split dependency with one source-built,
+multi-ABI runtime published through Maven Central. The
+[complete runtime and Maven Central roadmap](docs/complete-runtime-maven-roadmap.md)
+records the artifact contract, upstream GPU source gate, reproducibility and
+F-Droid requirements, device matrix, and staged Booming SS migration.
+
+Phases 2 through 6 are the current infrastructure priority. They may build
+commit-pinned alpha artifacts, but no stable complete-runtime release will be
+published until an upstream stable tag contains the source-buildable GPU
+accelerator.
+
 ## Diagnostic experiments
 
 The [OpenCL queue-window experiment](experiments/opencl-queue-window/README.md)
