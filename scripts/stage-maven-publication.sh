@@ -68,7 +68,6 @@ python3 "${repo_root}/scripts/prepare_maven_publication.py" \
   --api-source-root \
     "${litert_source}/litert/kotlin/src/main/kotlin" \
   --source-files "${repo_root}/contracts/api-source-files.txt" \
-  --source-lock "${repo_root}/config/complete-runtime-source-lock.json" \
   --contract "${repo_root}/contracts/complete-runtime-contract.json" \
   --build-manifest "${build_manifest}" \
   --license "${component_dir}/LICENSE-LiteRT.txt" \
@@ -97,6 +96,7 @@ python3 "${repo_root}/scripts/verify_maven_staging.py" \
   --repository "${repository_dir}" \
   --contract "${repo_root}/contracts/complete-runtime-contract.json" \
   --source-files "${repo_root}/contracts/api-source-files.txt" \
+  --source-lock "${repo_root}/config/complete-runtime-source-lock.json" \
   --group "${MAVEN_GROUP}" \
   --artifact "${MAVEN_ARTIFACT}" \
   --version "${ARTIFACT_VERSION}" \
