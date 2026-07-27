@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "liteRt": {
+    "repository": "https://github.com/google-ai-edge/LiteRT.git",
+    "commit": "876f8a675d1cb15b83214a59073d47390d8dd6aa"
+  },
+  "mlDrift": {
+    "workspaceRepository": "ml_drift",
+    "sourceStatus": "not-publicly-fetchable",
+    "stripPrefix": "ml-drift-main",
+    "urls": [],
+    "sha256": null,
+    "requiredFor": [
+      "libLiteRtClGlAccelerator.so"
+    ],
+    "stableReleaseBlocker": true
+  },
+  "patchSeries": [
+    {
+      "file": "0001-android-x86-build-fixes.patch",
+      "sha256": "4b047499e8db50be2c98269d7f293513199d13f174381ceacfa73fded7f5cd0d"
+    },
+    {
+      "file": "0002-gpu-options-api.patch",
+      "sha256": "af33640634c3f076a2904454659f11f170eeca69f1a458accd591e41b9c2faba"
+    },
+    {
+      "file": "0003-bounded-opencl-queue.patch",
+      "sha256": "09c7f1eb4de2f7cd2e8803918506bea9d1aaa73d8f5b7b42ac26016f932295e2"
+    },
+    {
+      "file": "0004-core-kotlin-api.patch",
+      "sha256": "04bb62c1b6ec80837971415165a90077ee24dec1ae77d1ee6617eed3144afad2"
+    }
+  ]
+}

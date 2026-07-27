@@ -1,0 +1,80 @@
+diff --git a/ml_drift_delegate/delegate/delegate_opencl.cc b/ml_drift_delegate/delegate/delegate_opencl.cc
+index 86375ee4..aadc6a84 100644
+--- a/ml_drift_delegate/delegate/delegate_opencl.cc
++++ b/ml_drift_delegate/delegate/delegate_opencl.cc
+@@ -624,6 +624,8 @@ TfLiteDelegatePtr CreateMlDriftClDelegate(MlDriftDelegateOptionsPtr options,
+                  << options->hint_waiting_for_completion;
+   ABSL_LOG(INFO) << "options->kernel_batch_size: "
+                  << options->kernel_batch_size;
++  ABSL_LOG(INFO) << "options->command_queue_window_size: "
++                 << options->command_queue_window_size;
+ 
+   // Initialize delegate_data.
+   auto delegate_data =
+@@ -698,6 +700,10 @@ TfLiteDelegatePtr CreateMlDriftClDelegate(MlDriftDelegateOptionsPtr options,
+   if (delegate_data->options->kernel_batch_size > 0) {
+     backend->set_kernel_batch_size(delegate_data->options->kernel_batch_size);
+   }
++  if (delegate_data->options->command_queue_window_size > 0) {
++    backend->set_command_queue_window_size(
++        delegate_data->options->command_queue_window_size);
++  }
+ 
+   // Initialize the ml_drift cl delegate.
+   TfLiteDelegatePtr delegate(new TfLiteDelegate(TfLiteDelegateCreate()),
+diff --git a/ml_drift_delegate/delegate/gpu_backend_opencl_litert.cc b/ml_drift_delegate/delegate/gpu_backend_opencl_litert.cc
+index 41f296c0..24b5e540 100644
+--- a/ml_drift_delegate/delegate/gpu_backend_opencl_litert.cc
++++ b/ml_drift_delegate/delegate/gpu_backend_opencl_litert.cc
+@@ -430,11 +430,24 @@ absl::Status GpuInferenceContextOpenClLitert::Dispatch() {
+ 
+   // Otherwise, dispatch kernels in batches of size kernel_batch_size.
+   int offset = 0;
++  int batches_since_wait = 0;
+   do {
+     ASSIGN_OR_RETURN(offset,
+                      cl_ctx().AddToQueue(cl_env()->queue(), offset,
+                                          current_backend->kernel_batch_size()));
++    ++batches_since_wait;
++    const bool wait_for_boundary =
++        current_backend->command_queue_window_size() > 0 &&
++        batches_since_wait >= current_backend->command_queue_window_size();
++    ::ml_drift::cl::CLEvent boundary_event;
++    if (wait_for_boundary) {
++      RETURN_IF_ERROR(cl_env()->queue()->EnqueueEvent(&boundary_event));
++    }
+     ::ml_drift::cl::clFlush(cl_env()->queue()->queue());
++    if (wait_for_boundary) {
++      boundary_event.Wait();
++      batches_since_wait = 0;
++    }
+   } while (offset != -1);
+   return absl::OkStatus();
+ }
+diff --git a/ml_drift_delegate/delegate/gpu_backend_opencl_litert.h b/ml_drift_delegate/delegate/gpu_backend_opencl_litert.h
+index 1cc60021..ec24c528 100644
+--- a/ml_drift_delegate/delegate/gpu_backend_opencl_litert.h
++++ b/ml_drift_delegate/delegate/gpu_backend_opencl_litert.h
+@@ -86,6 +86,13 @@ class GpuBackendOpenClLitert : public GpuBackendOpenCl {
+     kernel_batch_size_ = kernel_batch_size;
+   }
+ 
++  int command_queue_window_size() const {
++    return command_queue_window_size_;
++  }
++  void set_command_queue_window_size(int command_queue_window_size) {
++    command_queue_window_size_ = command_queue_window_size;
++  }
++
+  private:
+   absl::Status UploadCompiledCache();
+ 
+@@ -105,6 +112,8 @@ class GpuBackendOpenClLitert : public GpuBackendOpenCl {
+   int invoke_count_to_flush_compiled_cache_;
+   // If > 0, specifies the kernel (op) batch size, for a flush.
+   int kernel_batch_size_ = 0;
++  // If > 0, limits unfinished kernel batches before an event wait.
++  int command_queue_window_size_ = 0;
+ };
+ 
+ class GpuInferenceContextOpenClLitert : public GpuInferenceContextOpenCl {

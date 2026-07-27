@@ -89,9 +89,9 @@ Infrastructure work proceeds now in this order:
 | Phase | Work | State |
 | --- | --- | --- |
 | 1 | Freeze a stable, source-buildable upstream baseline | Waiting on upstream tag |
-| 2 | Freeze API, JNI, and ABI contracts | Next |
-| 3 | Implement auditable source patches | Queued |
-| 4 | Build one complete multi-ABI AAR from source | Queued |
+| 2 | Freeze API, JNI, and ABI contracts | Complete |
+| 3 | Implement auditable source patches | Implemented; GPU build blocked by unpublished ML Drift source |
+| 4 | Build one complete multi-ABI AAR from source | Next |
 | 5 | Assemble the Maven Central artifact set | Queued |
 | 6 | Enforce static checks and reproducibility | Queued |
 | 7+ | Device validation, publishing, migration, and F-Droid | After a candidate AAR exists |
@@ -125,19 +125,19 @@ components, and every input is independently fetchable and verified.
 Goal: define exactly what the complete Booming SS runtime promises before
 changing native build rules.
 
-- [ ] Scan the pinned Booming SS consumer commit for every LiteRT class,
+- [x] Scan the pinned Booming SS consumer commit for every LiteRT class,
       constructor, method, enum, and accelerator option it uses.
-- [ ] Record the public package names and signatures in a reviewable API
+- [x] Record the public package names and signatures in a reviewable API
       baseline and add an automated compatibility check.
-- [ ] Inventory the JNI exports used by the Java/Kotlin API and the symbols
+- [x] Inventory the JNI exports used by the Java/Kotlin API and the symbols
       required for GPU accelerator discovery.
-- [ ] Freeze `minSdk 23`, JVM 17 bytecode, library names, SONAMEs, Android API
+- [x] Freeze `minSdk 23`, JVM 17 bytecode, library names, SONAMEs, Android API
       level, and the supported ABI matrix.
-- [ ] Record CPU-only and CPU-plus-GPU expectations separately for each ABI.
-- [ ] Define the exclusion list for provider APIs and Play AI Delivery.
-- [ ] Add a consumer compile fixture proving that Booming SS can compile
+- [x] Record CPU-only and CPU-plus-GPU expectations separately for each ABI.
+- [x] Define the exclusion list for provider APIs and Play AI Delivery.
+- [x] Add a consumer compile fixture proving that Booming SS can compile
       against the repository-built API without package-name changes.
-- [ ] Define an API-diff report against the matching official upstream
+- [x] Define an API-diff report against the matching official upstream
       `classes.jar`, with intentional exclusions documented.
 
 Deliverables should include a human-readable contract, a machine-readable API
@@ -151,25 +151,35 @@ updated and reviewed.
 Goal: replace the current diagnostic binary modifications with a deterministic
 source patch series.
 
-- [ ] Preserve the existing Android `x86` CPU toolchain and build-rule support
-      as a standalone, documented patch.
-- [ ] Add independent `kernelBatchSize` and `commandQueueWindowSize` options to
+- [x] Preserve the existing Android `x86` CPU build-rule corrections as a
+      standalone, documented patch while retaining the newer upstream NDK
+      toolchain registration.
+- [x] Add independent `kernelBatchSize` and `commandQueueWindowSize` options to
       the supported Android API.
-- [ ] Carry both values through Kotlin/Java, JNI, LiteRT GPU options, and
-      `ml_drift` without conflating their meanings.
-- [ ] Bound unfinished OpenCL submissions with event waits in the delegate.
+- [x] Carry both values through Kotlin/Java, JNI, LiteRT GPU options, and the
+      exported ML Drift delegate options without conflating their meanings.
+- [x] Bound unfinished OpenCL submissions with event waits in the delegate.
 - [ ] Prove that queue window `0` is behaviorally equivalent to unmodified
       upstream execution.
-- [ ] Preserve GPU initialization and inference fallback to a fresh CPU
+- [x] Preserve GPU initialization and inference fallback to a fresh CPU
       session, including a machine-readable fallback reason.
-- [ ] Add unit or host tests for option defaults, propagation, invalid values,
-      and fallback diagnostics.
-- [ ] Store all changes as ordered textual patches that apply cleanly with a
+- [x] Add unit or host tests for option defaults, propagation, and invalid
+      values.
+- [ ] Revalidate machine-readable fallback diagnostics against the packaged
+      complete-runtime candidate.
+- [x] Store all changes as ordered textual patches that apply cleanly with a
       fixed direction and fail on fuzz or unexpected offsets.
-- [ ] Remove all release-path references to binary patching and `libOCLQ.so`.
+- [x] Keep binary patching and `libOCLQ.so` confined to the diagnostic
+      experiment and reject them from the complete-runtime release path.
 
 The existing `experiments/opencl-queue-window` directory remains diagnostic
 evidence only. It must never become a release input.
+
+The LiteRT-side patch series now applies cleanly and is hash-locked. Full GPU
+compilation remains blocked because the pinned upstream `@ml_drift`
+`http_archive` has no public URL or SHA-256. Queue window 0 still requires
+final packaged-runtime and device comparison before behavioral equivalence is
+marked complete.
 
 Exit condition: a clean upstream checkout plus the recorded patch series builds
 the modified targets without any binary transformation.

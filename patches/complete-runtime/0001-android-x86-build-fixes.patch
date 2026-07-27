@@ -1,0 +1,34 @@
+diff --git a/litert/core/BUILD b/litert/core/BUILD
+index 4c491dfb..51112826 100644
+--- a/litert/core/BUILD
++++ b/litert/core/BUILD
+@@ -143,15 +143,11 @@ cc_library(
+         "//litert/cc:litert_expected",
+         "//litert/cc:litert_macros",
+         "//litert/runtime:accelerator_registry",
++        "//litert/runtime:gpu_environment",
+         "//litert/runtime:tensor_buffer_registry_header",
+         "//tflite/core/api:error_reporter",
+         "@com_google_absl//absl/types:span",
+-    ] + select({
+-        "//litert/build_common:build_include_gpu_enabled": [
+-            "//litert/runtime:gpu_environment",
+-        ],
+-        "//conditions:default": [],
+-    }),
++    ],
+ )
+ 
+ cc_library(
+diff --git a/litert/runtime/BUILD b/litert/runtime/BUILD
+index 837a5c0f..1186717c 100644
+--- a/litert/runtime/BUILD
++++ b/litert/runtime/BUILD
+@@ -48,6 +48,7 @@ cc_library(
+     copts = litert_metal_opts(),
+     linkopts = litert_metal_linkopts(),
+     deps = [
++        ":gpu_environment_header",
+         "//litert/c:litert_common",
+         "//litert/c:litert_event_type",
+         "//litert/c:litert_gl_types",

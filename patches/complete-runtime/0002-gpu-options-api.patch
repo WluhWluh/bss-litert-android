@@ -1,0 +1,374 @@
+diff --git a/litert/c/options/litert_gpu_options.cc b/litert/c/options/litert_gpu_options.cc
+index 64e598e3..aa347b2e 100644
+--- a/litert/c/options/litert_gpu_options.cc
++++ b/litert/c/options/litert_gpu_options.cc
+@@ -35,6 +35,8 @@ using ::litert::internal::ParseTomlBool;
+ using ::litert::internal::ParseTomlInt;
+ using ::litert::internal::ParseTomlStringArray;
+ 
++constexpr int kMaxCommandQueueWindowSize = 1024;
++
+ struct LrtGpuOptions {
+   // Increment the minor version every time a field is added.
+   static constexpr const absl::string_view kIdentifier = "gpu_options";
+@@ -169,6 +171,10 @@ struct LrtGpuOptions {
+   // Only for OpenCL backend.
+   std::optional<int> kernel_batch_size;
+ 
++  // Limits unfinished OpenCL kernel batches before an event wait.
++  // Zero preserves the upstream queue behavior.
++  std::optional<int> command_queue_window_size;
++
+   // Added in version 2.1.7.
+   // Pointer to SharedTensorMaps to share pre-loaded weights between models.
+   std::optional<void*> shared_tensor_maps;
+@@ -221,6 +227,10 @@ LiteRtStatus LrtGetOpaqueGpuOptionsData(const LrtGpuOptions* options,
+   if (options->kernel_batch_size.has_value()) {
+     ss << "kernel_batch_size = " << options->kernel_batch_size.value() << "\n";
+   }
++  if (options->command_queue_window_size.has_value()) {
++    ss << "command_queue_window_size = "
++       << options->command_queue_window_size.value() << "\n";
++  }
+   if (options->shared_tensor_maps.has_value() &&
+       *(options->shared_tensor_maps) != nullptr) {
+     ss << "shared_tensor_maps = "
+@@ -392,6 +402,12 @@ LiteRtStatus LrtCreateGpuOptionsFromToml(const char* toml_string,
+           auto res = ParseTomlInt(value);
+           if (!res) return kLiteRtStatusErrorInvalidArgument;
+           (*options)->kernel_batch_size = *res;
++        } else if (key == "command_queue_window_size") {
++          auto res = ParseTomlInt(value);
++          if (!res || *res < 0 || *res > kMaxCommandQueueWindowSize) {
++            return kLiteRtStatusErrorInvalidArgument;
++          }
++          (*options)->command_queue_window_size = *res;
+         } else if (key == "shared_tensor_maps") {
+           auto res = ParseTomlInt(value);
+           if (!res) return kLiteRtStatusErrorInvalidArgument;
+@@ -599,6 +615,17 @@ LiteRtStatus LrtSetGpuAcceleratorRuntimeOptionsKernelBatchSize(
+   return kLiteRtStatusOk;
+ }
+ 
++LiteRtStatus LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++    LrtGpuOptions* gpu_options, int command_queue_window_size) {
++  if (!gpu_options || command_queue_window_size < 0 ||
++      command_queue_window_size > kMaxCommandQueueWindowSize) {
++    return kLiteRtStatusErrorInvalidArgument;
++  }
++
++  gpu_options->command_queue_window_size = command_queue_window_size;
++  return kLiteRtStatusOk;
++}
++
+ LiteRtStatus LrtSetGpuAcceleratorCompilationOptionsPrecision(
+     LrtGpuOptions* gpu_options, LiteRtDelegatePrecision precision) {
+   if (!gpu_options) return kLiteRtStatusErrorInvalidArgument;
+@@ -896,6 +923,18 @@ LiteRtStatus LrtGetGpuAcceleratorRuntimeOptionsKernelBatchSize(
+   return kLiteRtStatusOk;
+ }
+ 
++LiteRtStatus LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++    int* command_queue_window_size, const LrtGpuOptions* options) {
++  LITERT_RETURN_IF_ERROR(command_queue_window_size,
++                         ErrorStatusBuilder::InvalidArgument())
++      << "`command_queue_window_size` cannot be null.";
++  LITERT_RETURN_IF_ERROR(options, ErrorStatusBuilder::InvalidArgument())
++      << "`options` cannot be null.";
++  *command_queue_window_size =
++      options->command_queue_window_size.value_or(0);
++  return kLiteRtStatusOk;
++}
++
+ LiteRtStatus LrtGetGpuAcceleratorCompilationOptionsPrecision(
+     LiteRtDelegatePrecision* precision, const LrtGpuOptions* options) {
+   LITERT_RETURN_IF_ERROR(precision, ErrorStatusBuilder::InvalidArgument())
+diff --git a/litert/c/options/litert_gpu_options.h b/litert/c/options/litert_gpu_options.h
+index 7cb8f1f1..6254b32c 100644
+--- a/litert/c/options/litert_gpu_options.h
++++ b/litert/c/options/litert_gpu_options.h
+@@ -114,6 +114,12 @@ LiteRtStatus LrtSetGpuAcceleratorRuntimeOptionsHintWaitingForCompletion(
+ LiteRtStatus LrtSetGpuAcceleratorRuntimeOptionsKernelBatchSize(
+     LrtGpuOptions* gpu_options, int kernel_batch_size);
+ 
++// Limits the number of unfinished OpenCL kernel batches submitted before
++// waiting for a boundary event. Zero preserves the upstream queue behavior.
++// Values greater than zero require a positive kernel batch size to take effect.
++LiteRtStatus LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++    LrtGpuOptions* gpu_options, int command_queue_window_size);
++
+ // Sets the GPU accelerator precision. e.g. FP16, FP32, etc.
+ LiteRtStatus LrtSetGpuAcceleratorCompilationOptionsPrecision(
+     LrtGpuOptions* gpu_options, LiteRtDelegatePrecision precision);
+@@ -276,6 +282,9 @@ LiteRtStatus LrtGetGpuAcceleratorRuntimeOptionsHintWaitingForCompletion(
+ LiteRtStatus LrtGetGpuAcceleratorRuntimeOptionsKernelBatchSize(
+     int* kernel_batch_size, const LrtGpuOptions* options);
+ 
++LiteRtStatus LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++    int* command_queue_window_size, const LrtGpuOptions* options);
++
+ LiteRtStatus LrtGetGpuAcceleratorCompilationOptionsPrecision(
+     LiteRtDelegatePrecision* precision, const LrtGpuOptions* options);
+ 
+diff --git a/litert/c/options/litert_gpu_options_test.cc b/litert/c/options/litert_gpu_options_test.cc
+index dc9cc2d7..9913ae33 100644
+--- a/litert/c/options/litert_gpu_options_test.cc
++++ b/litert/c/options/litert_gpu_options_test.cc
+@@ -589,6 +589,43 @@ TEST(GpuAcceleratorPayload, SetAndGetKernelBatchSize) {
+   LrtDestroyGpuOptions(payload);
+ }
+ 
++TEST(GpuAcceleratorPayload, SetAndGetCommandQueueWindowSize) {
++  LrtGpuOptions* payload = nullptr;
++  LITERT_ASSERT_OK(LrtCreateGpuOptions(&payload));
++
++  int command_queue_window_size = -1;
++  LITERT_EXPECT_OK(
++      LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++          &command_queue_window_size, payload));
++  EXPECT_EQ(command_queue_window_size, 0);
++
++  LITERT_EXPECT_OK(
++      LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(payload, 1));
++  LITERT_EXPECT_OK(
++      LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++          &command_queue_window_size, payload));
++  EXPECT_EQ(command_queue_window_size, 1);
++
++  LrtGpuOptions* payload_from_toml = nullptr;
++  SerializeAndParse(payload, &payload_from_toml);
++
++  int command_queue_window_size_from_toml = 0;
++  LITERT_EXPECT_OK(
++      LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++          &command_queue_window_size_from_toml, payload_from_toml));
++  EXPECT_EQ(command_queue_window_size_from_toml, 1);
++
++  EXPECT_EQ(LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++                payload, -1),
++            kLiteRtStatusErrorInvalidArgument);
++  EXPECT_EQ(LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++                payload, 1025),
++            kLiteRtStatusErrorInvalidArgument);
++
++  LrtDestroyGpuOptions(payload_from_toml);
++  LrtDestroyGpuOptions(payload);
++}
++
+ TEST(GpuAcceleratorPayload, SetAndGetAllowSrcQuantizedFcConvOps) {
+   LrtGpuOptions* payload = nullptr;
+   LITERT_ASSERT_OK(LrtCreateGpuOptions(&payload));
+diff --git a/litert/cc/options/litert_gpu_options.h b/litert/cc/options/litert_gpu_options.h
+index 196c03ae..4020a061 100644
+--- a/litert/cc/options/litert_gpu_options.h
++++ b/litert/cc/options/litert_gpu_options.h
+@@ -329,6 +329,13 @@ class GpuOptions {
+                                                              kernel_batch_size);
+   }
+ 
++  /// @brief Limits unfinished OpenCL kernel batches before an event wait.
++  /// @note Zero preserves upstream behavior. Only for OpenCL backend.
++  LiteRtStatus SetCommandQueueWindowSize(int command_queue_window_size) {
++    return LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++        options_, command_queue_window_size);
++  }
++
+  private:
+   LrtGpuOptions* options_;
+ };
+diff --git a/litert/cc/options/litert_gpu_options_test.cc b/litert/cc/options/litert_gpu_options_test.cc
+index 1f7d2bf6..fdd3f307 100644
+--- a/litert/cc/options/litert_gpu_options_test.cc
++++ b/litert/cc/options/litert_gpu_options_test.cc
+@@ -322,5 +322,25 @@ TEST(GpuOptions, SetKernelBatchSizeWorks) {
+   EXPECT_THAT(kernel_batch_size, Eq(10));
+ }
+ 
++TEST(GpuOptions, SetCommandQueueWindowSizeWorks) {
++  LITERT_ASSERT_OK_AND_ASSIGN(GpuOptions options, GpuOptions::Create());
++  LrtGpuOptions* payload = options.Get();
++
++  int command_queue_window_size = -1;
++  LITERT_ASSERT_OK(
++      LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++          &command_queue_window_size, payload));
++  EXPECT_EQ(command_queue_window_size, 0);
++
++  LITERT_ASSERT_OK(options.SetCommandQueueWindowSize(1));
++
++  LITERT_ASSERT_OK(
++      LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++          &command_queue_window_size, payload));
++  EXPECT_EQ(command_queue_window_size, 1);
++  EXPECT_EQ(options.SetCommandQueueWindowSize(-1),
++            kLiteRtStatusErrorInvalidArgument);
++}
++
+ }  // namespace
+ }  // namespace litert::ml_drift
+diff --git a/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc b/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
+index ead96c09..c82a0391 100644
+--- a/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
++++ b/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
+@@ -97,6 +97,8 @@ enum GpuOptionsKey {
+   kBackend = 12,
+   kPriority = 13,
+   kNumStepsOfCommandBufferPreparations = 14,
++  kKernelBatchSize = 15,
++  kCommandQueueWindowSize = 16,
+ };
+ 
+ // Keys for Qualcomm options, the values should match the ones in Kotlin.
+@@ -354,6 +356,22 @@ Expected<void> PopulateGpuOptions(JNIEnv* env, GpuOptions& gpu_options,
+                             "numStepsOfCommandBufferPreparations.");
+         }
+         break;
++      case GpuOptionsKey::kKernelBatchSize:
++        status = gpu_options.SetKernelBatchSize(
++            std::stoi(gpu_options_values_vector[i]));
++        if (status != kLiteRtStatusOk) {
++          return Unexpected(status,
++                            "Failed to set GPU options kernelBatchSize.");
++        }
++        break;
++      case GpuOptionsKey::kCommandQueueWindowSize:
++        status = gpu_options.SetCommandQueueWindowSize(
++            std::stoi(gpu_options_values_vector[i]));
++        if (status != kLiteRtStatusOk) {
++          return Unexpected(
++              status, "Failed to set GPU options commandQueueWindowSize.");
++        }
++        break;
+       default:
+         return Unexpected(kLiteRtStatusErrorInvalidArgument,
+                           absl::StrCat("Unknown GPU options key: ",
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+index f3ad409f..2c8d9418 100644
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+@@ -108,6 +108,8 @@ private constructor(
+     val backend: Backend? = null,
+     val priority: Priority? = null,
+     val numStepsOfCommandBufferPreparations: Int? = null,
++    val kernelBatchSize: Int? = null,
++    val commandQueueWindowSize: Int? = null,
+   ) {
+     /** Precision for GPU options. */
+     enum class Precision constructor(val value: Int) {
+@@ -156,6 +158,8 @@ private constructor(
+       BACKEND(12),
+       PRIORITY(13),
+       NUM_STEPS_OF_COMMAND_BUFFER_PREPARATIONS(14),
++      KERNEL_BATCH_SIZE(15),
++      COMMAND_QUEUE_WINDOW_SIZE(16),
+     }
+ 
+     // Converts the options to a map, with all values converted to strings.
+@@ -207,6 +211,12 @@ private constructor(
+         map[Key.NUM_STEPS_OF_COMMAND_BUFFER_PREPARATIONS] =
+           numStepsOfCommandBufferPreparations.toString()
+       }
++      if (kernelBatchSize != null) {
++        map[Key.KERNEL_BATCH_SIZE] = kernelBatchSize.toString()
++      }
++      if (commandQueueWindowSize != null) {
++        map[Key.COMMAND_QUEUE_WINDOW_SIZE] = commandQueueWindowSize.toString()
++      }
+       return map.toMap()
+     }
+   }
+diff --git a/litert/runtime/accelerators/gpu/ml_drift_delegate_create.cc b/litert/runtime/accelerators/gpu/ml_drift_delegate_create.cc
+index 47c392af..71eab874 100644
+--- a/litert/runtime/accelerators/gpu/ml_drift_delegate_create.cc
++++ b/litert/runtime/accelerators/gpu/ml_drift_delegate_create.cc
+@@ -117,6 +117,9 @@ LiteRtStatus CreateDelegate(
+     LrtGetGpuAcceleratorRuntimeOptionsKernelBatchSize(
+         &gpu_delegate_options->kernel_batch_size, gpu_options_payload);
+ 
++    LrtGetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++        &gpu_delegate_options->command_queue_window_size, gpu_options_payload);
++
+     LiteRtDelegatePrecision litert_delegate_precision =
+         kLiteRtDelegatePrecisionDefault;
+ 
+diff --git a/litert/runtime/accelerators/gpu/ml_drift_delegate_create_test.cc b/litert/runtime/accelerators/gpu/ml_drift_delegate_create_test.cc
+index 0539fb4e..7a53d3c5 100644
+--- a/litert/runtime/accelerators/gpu/ml_drift_delegate_create_test.cc
++++ b/litert/runtime/accelerators/gpu/ml_drift_delegate_create_test.cc
+@@ -23,6 +23,7 @@
+ #include "litert/c/litert_common.h"
+ #include "litert/c/litert_opaque_options.h"
+ #include "litert/c/litert_options.h"
++#include "litert/c/options/litert_gpu_options.h"
+ #include "ml_drift_delegate/delegate/delegate_options.h"
+ #include "ml_drift_delegate/delegate/delegate_types.h"
+ #include "tflite/c/c_api_types.h"
+@@ -32,6 +33,9 @@ namespace {
+ 
+ void DtorHelper(void*) {}
+ 
++int captured_kernel_batch_size = 0;
++int captured_command_queue_window_size = 0;
++
+ }  // namespace
+ 
+ extern "C" void LiteRtDeleteMockGpuDelegate(TfLiteDelegate* delegate) {
+@@ -42,11 +46,44 @@ extern "C" void LiteRtDeleteMockGpuDelegate(TfLiteDelegate* delegate) {
+ litert::TfLiteDelegatePtr CreateMockGpuDelegate(
+     litert::ml_drift::MlDriftDelegateOptionsPtr options,
+     LiteRtEnvironment litert_env) {
++  if (options != nullptr) {
++    captured_kernel_batch_size = options->kernel_batch_size;
++    captured_command_queue_window_size = options->command_queue_window_size;
++  }
+   litert::TfLiteDelegatePtr delegate(new TfLiteDelegate(TfLiteDelegateCreate()),
+                                      LiteRtDeleteMockGpuDelegate);
+   return delegate;
+ }
+ 
++TEST(MlDriftDelegateCreateTest, PropagatesIndependentOpenClQueueOptions) {
++  LiteRtAccelerator accelerator;
++  ASSERT_EQ(LiteRtCreateAccelerator(&accelerator), kLiteRtStatusOk);
++
++  LrtGpuOptions* gpu_options = nullptr;
++  ASSERT_EQ(LrtCreateGpuOptions(&gpu_options), kLiteRtStatusOk);
++  ASSERT_EQ(
++      LrtSetGpuAcceleratorRuntimeOptionsKernelBatchSize(gpu_options, 4),
++      kLiteRtStatusOk);
++  ASSERT_EQ(LrtSetGpuAcceleratorRuntimeOptionsCommandQueueWindowSize(
++                gpu_options, 1),
++            kLiteRtStatusOk);
++
++  captured_kernel_batch_size = 0;
++  captured_command_queue_window_size = 0;
++  auto delegate_options = std::make_unique<MlDriftDelegateOptions>();
++  litert::TfLiteDelegatePtr delegate_ptr{nullptr, nullptr};
++  LiteRtRuntimeContext* runtime_context = LrtGetRuntimeContext();
++  ASSERT_EQ(litert::ml_drift::CreateDelegate(
++                runtime_context, nullptr, accelerator, gpu_options,
++                std::move(delegate_options), CreateMockGpuDelegate,
++                delegate_ptr),
++            kLiteRtStatusOk);
++  EXPECT_EQ(captured_kernel_batch_size, 4);
++  EXPECT_EQ(captured_command_queue_window_size, 1);
++
++  LiteRtDestroyAccelerator(accelerator);
++}
++
+ TEST(MlDriftDelegateCreateTest,
+      CreateDelegateNoDelegateOptionsNoGpuOptionsPayload) {
+   LiteRtAccelerator accelerator;
+diff --git a/ml_drift_delegate/delegate/delegate_options.h b/ml_drift_delegate/delegate/delegate_options.h
+index 6659768f..f0bae01c 100644
+--- a/ml_drift_delegate/delegate/delegate_options.h
++++ b/ml_drift_delegate/delegate/delegate_options.h
+@@ -312,6 +312,9 @@ struct MlDriftDelegateOptions {
+   // If > 0, specifies the kernel (op) batch size, for a flush.
+   int kernel_batch_size = 0;
+ 
++  // If > 0, limits unfinished OpenCL kernel batches before an event wait.
++  int command_queue_window_size = 0;
++
+   // Pointer to SharedTensorMaps provided by the client to sharing GPU tensors,
+   // weights across delegates.
+   void* shared_tensor_maps_from_client = nullptr;

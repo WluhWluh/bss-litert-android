@@ -42,6 +42,21 @@ jobs:
           chmod +x smoke/gradlew
           ./smoke/gradlew -p smoke :contract:compileDebugKotlin --stacktrace
 
+      - name: Verify complete runtime source patches
+        run: |
+          source config/complete-runtime.env
+          source_dir="$RUNNER_TEMP/litert-source"
+          git init "$source_dir"
+          git -C "$source_dir" remote add origin "$LITERT_REPOSITORY"
+          git -C "$source_dir" fetch \
+            --depth=1 \
+            --filter=blob:none \
+            origin "$LITERT_COMMIT"
+          git -C "$source_dir" checkout --detach FETCH_HEAD
+          python3 scripts/apply-complete-runtime-patches.py \
+            --source "$source_dir" \
+            --verify-only
+
       - name: Verify deterministic AAR packaging
         run: |
           tmp="$(mktemp -d)"

@@ -81,6 +81,10 @@ multi-ABI runtime published through Maven Central. The
 records the artifact contract, upstream GPU source gate, reproducibility and
 F-Droid requirements, device matrix, and staged Booming SS migration.
 
+The [complete runtime source patch guide](docs/complete-runtime-source-patches.md)
+documents the locked, zero-offset patch series and the unresolved public
+ML Drift source requirement.
+
 Phases 2 through 6 are the current infrastructure priority. They may build
 commit-pinned alpha artifacts, but no stable complete-runtime release will be
 published until an upstream stable tag contains the source-buildable GPU

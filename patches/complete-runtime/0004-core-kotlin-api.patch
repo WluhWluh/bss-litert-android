@@ -1,0 +1,93 @@
+diff --git a/litert/kotlin/BUILD b/litert/kotlin/BUILD
+index c28f2f2d..f1639acf 100644
+--- a/litert/kotlin/BUILD
++++ b/litert/kotlin/BUILD
+@@ -299,6 +299,15 @@ LITERT_KOTLIN_SRCS_ALL = [
+     "src/main/kotlin/com/google/ai/edge/litert/deployment/AiPackModelProvider.kt",
+ ]
+ 
++BSS_LITERT_KOTLIN_SRCS = [
++    "src/main/kotlin/com/google/ai/edge/litert/AcceleratorProvider.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Common.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Environment.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/LiteRtException.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Model.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt",
++]
++
+ LITERT_KOTLIN_DEPS = [
+     "@litert_maven//:com_google_android_play_ai_delivery",
+     "@litert_maven//:com_google_guava_guava",
+@@ -346,6 +355,17 @@ kt_android_library(
+     ],
+ )
+ 
++# Core Android API used by Booming SS. This intentionally excludes model
++# providers, Play AI Delivery adapters, and copied TensorFlow Lite APIs.
++kt_android_library(
++    name = "litert_bss_api_no_jni",
++    srcs = BSS_LITERT_KOTLIN_SRCS,
++    exports_manifest = 1,
++    javacopts = ["--release 17"],
++    manifest = "src/core/AndroidManifest.xml",
++    visibility = ["//visibility:public"],
++)
++
+ # TODO(niuchl): Remove this alias once the internal references are updated to the new target.
+ alias(
+     name = "litert_kotlin_api",
+@@ -409,6 +429,11 @@ aar_with_jni(
+     # copybara:uncomment third_party_notice = "//litert/kotlin/google/third_party_licenses:res/raw/third_party_licenses",
+ )
+ 
++aar_with_jni(
++    name = "litert-bss-api-aar",
++    android_library = ":litert_bss_api_no_jni",
++)
++
+ # bazel build --config=android_arm64 --android_ndk_min_sdk_version=23 \
+ #   --define=public_maven_build=true \
+ #   //litert/kotlin:litert-aar
+diff --git a/litert/kotlin/src/core/AndroidManifest.xml b/litert/kotlin/src/core/AndroidManifest.xml
+new file mode 100644
+index 00000000..1e6172f6
+--- /dev/null
++++ b/litert/kotlin/src/core/AndroidManifest.xml
+@@ -0,0 +1,37 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright 2026 Booming SS contributors
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.google.ai.edge.litert">
++
++    <uses-sdk android:minSdkVersion="23" />
++
++    <application>
++        <uses-native-library
++            android:name="libOpenCL.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-car.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-pixel.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libvndksupport.so"
++            android:required="false" />
++    </application>
++
++</manifest>
