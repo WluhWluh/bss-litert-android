@@ -46,7 +46,9 @@ jobs:
         run: python3 -m unittest discover -s tests
 
       - name: Build bounded GPU runtime
-        run: ./scripts/build-bounded-gpu-runtime.sh
+        run: |
+          unset ANDROID_NDK_HOME ANDROID_NDK_ROOT
+          ./scripts/build-bounded-gpu-runtime.sh
 
       - name: Verify source identity
         run: |
