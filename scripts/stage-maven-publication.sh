@@ -85,6 +85,12 @@ python3 "${repo_root}/scripts/prepare_maven_publication.py" \
   "-PstagingRepositoryDir=${repository_dir}" \
   --no-daemon
 
+python3 "${repo_root}/scripts/remove_maven_repository_metadata.py" \
+  --repository "${repository_dir}" \
+  --group "${MAVEN_GROUP}" \
+  --artifact "${MAVEN_ARTIFACT}" \
+  --version "${ARTIFACT_VERSION}"
+
 version_dir="${repository_dir}/${MAVEN_GROUP//.//}/${MAVEN_ARTIFACT}/${ARTIFACT_VERSION}"
 python3 "${repo_root}/scripts/write_maven_checksums.py" "${version_dir}"
 

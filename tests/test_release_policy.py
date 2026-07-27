@@ -18,6 +18,7 @@ from audit_release_inputs import (  # noqa: E402
 )
 from assemble_maven_bundle import main as assemble_bundle_main  # noqa: E402
 from compare_release_builds import compare_trees  # noqa: E402
+from remove_maven_repository_metadata import main as remove_metadata_main  # noqa: E402
 from verify_native_artifacts import (  # noqa: E402
     ElfInspection,
     parse_android_api,
@@ -200,6 +201,39 @@ class ReleasePolicyTest(unittest.TestCase):
             finally:
                 sys.argv = original_argv
             self.assertEqual(outputs[0].read_bytes(), outputs[1].read_bytes())
+
+    def test_removes_only_generated_maven_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / "repository" / "example" / "runtime"
+            version = module / "test"
+            version.mkdir(parents=True)
+            (version / "runtime-test.pom").write_text("pom", encoding="ascii")
+            for name in (
+                "maven-metadata.xml",
+                "maven-metadata.xml.sha256",
+            ):
+                (module / name).write_text("generated", encoding="ascii")
+            original_argv = sys.argv
+            try:
+                sys.argv = [
+                    "remove_maven_repository_metadata.py",
+                    "--repository",
+                    str(root / "repository"),
+                    "--group",
+                    "example",
+                    "--artifact",
+                    "runtime",
+                    "--version",
+                    "test",
+                ]
+                self.assertEqual(remove_metadata_main(), 0)
+            finally:
+                sys.argv = original_argv
+            self.assertTrue((version / "runtime-test.pom").is_file())
+            self.assertEqual(
+                [path.name for path in module.iterdir() if path.is_file()], []
+            )
 
 
 if __name__ == "__main__":
