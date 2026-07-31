@@ -59,33 +59,21 @@ def verify(aar: Path, lock_path: Path) -> None:
     expected = lock["output"]
     actual_aar_size = aar.stat().st_size
     actual_aar_sha256 = sha256_file(aar)
-    if actual_aar_size != expected["baseAarByteSize"]:
-        raise ValueError(
-            "Explicit-loader base AAR size differs from the lock: "
-            f"{actual_aar_size} != {expected['baseAarByteSize']}; "
-            f"actual SHA-256 {actual_aar_sha256}"
-        )
-    if actual_aar_sha256 != expected["baseAarSha256"]:
-        raise ValueError(
-            "Explicit-loader base AAR SHA-256 differs from the lock: "
-            f"{actual_aar_sha256} != {expected['baseAarSha256']}"
-        )
-
     aar_entries = read_archive(aar)
     if set(aar_entries) != {"AndroidManifest.xml", "classes.jar"}:
         raise ValueError(f"Unexpected base AAR entries: {sorted(aar_entries)}")
     classes = aar_entries["classes.jar"]
-    if len(classes) != expected["classesJarByteSize"]:
-        raise ValueError(
-            "Explicit-loader classes JAR size differs from the lock: "
-            f"{len(classes)} != {expected['classesJarByteSize']}; "
-            f"actual SHA-256 {sha256_bytes(classes)}"
-        )
     actual_classes_sha256 = sha256_bytes(classes)
-    if actual_classes_sha256 != expected["classesJarSha256"]:
+    actual_identity = {
+        "baseAarByteSize": actual_aar_size,
+        "baseAarSha256": actual_aar_sha256,
+        "classesJarByteSize": len(classes),
+        "classesJarSha256": actual_classes_sha256,
+    }
+    if any(actual_identity[key] != expected[key] for key in actual_identity):
         raise ValueError(
-            "Explicit-loader classes JAR SHA-256 differs from the lock: "
-            f"{actual_classes_sha256} != {expected['classesJarSha256']}"
+            "Explicit-loader output identity differs from the lock: "
+            f"{json.dumps(actual_identity, sort_keys=True)}"
         )
 
     with tempfile.TemporaryDirectory(prefix="bss-litert-loader-api-") as directory:
