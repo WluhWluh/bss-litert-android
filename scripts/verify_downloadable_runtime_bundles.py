@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import tempfile
 import zipfile
 from pathlib import Path
 
 from build_downloadable_runtime_bundles import json_bytes, sha256_bytes, sha256_file
-from deterministic_archive import FIXED_ZIP_TIME
+from deterministic_archive import FIXED_ZIP_TIME, write_archive
+from verify_downloadable_api import verify as verify_explicit_loader_api
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = REPO_ROOT / "contracts/downloadable-runtime-contract.json"
+DEFAULT_API_SOURCE_LOCK = REPO_ROOT / "config/downloadable-api-source-lock.json"
 DEFAULT_DIST = REPO_ROOT / "dist/downloadable-runtime"
 
 
@@ -36,18 +39,42 @@ def require_file(path: Path, size: int, sha256: str) -> None:
         raise ValueError(f"Release asset identity mismatch: {path.name}")
 
 
-def verify_api_aar(path: Path, contract: dict, contract_bytes: bytes) -> None:
+def verify_api_aar(
+    path: Path,
+    contract: dict,
+    contract_bytes: bytes,
+    source_lock_path: Path,
+    source_lock_bytes: bytes,
+) -> None:
     entries = read_normalized_archive(path)
     if any(name.startswith("jni/") for name in entries):
         raise ValueError("Pure API AAR contains native libraries")
     embedded = contract["apiAar"]["embeddedContractPath"]
     if entries.get(embedded) != contract_bytes:
         raise ValueError("Pure API AAR does not contain the exact downloadable contract")
+    embedded_lock = contract["apiAar"]["embeddedSourceLockPath"]
+    if entries.get(embedded_lock) != source_lock_bytes:
+        raise ValueError("Pure API AAR does not contain the exact API source lock")
     if "META-INF/bss-litert/bounded-gpu-runtime-contract.json" in entries:
         raise ValueError("Pure API AAR retained the packaged-runtime contract")
     classes = entries.get("classes.jar")
-    if classes is None or sha256_bytes(classes) != contract["sourceAar"]["classesJarSha256"]:
+    if classes is None:
+        raise ValueError("Pure API AAR has no classes.jar")
+    if len(classes) != contract["apiAar"]["classesJarByteSize"]:
+        raise ValueError("Pure API AAR classes.jar size mismatch")
+    if sha256_bytes(classes) != contract["apiAar"]["classesJarSha256"]:
         raise ValueError("Pure API AAR classes.jar identity mismatch")
+
+    with tempfile.TemporaryDirectory(prefix="bss-litert-release-api-") as directory:
+        base_aar = Path(directory) / contract["apiAar"]["baseFileName"]
+        write_archive(
+            base_aar,
+            {
+                "AndroidManifest.xml": entries["AndroidManifest.xml"],
+                "classes.jar": classes,
+            },
+        )
+        verify_explicit_loader_api(base_aar, source_lock_path)
 
 
 def verify_cpu_bundle(path: Path, abi: str, metadata: dict, contract: dict) -> None:
@@ -123,17 +150,36 @@ def verify_checksums(dist: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
+    parser.add_argument(
+        "--api-source-lock",
+        type=Path,
+        default=DEFAULT_API_SOURCE_LOCK,
+    )
     parser.add_argument("--dist", type=Path, default=DEFAULT_DIST)
     args = parser.parse_args()
     contract_bytes = args.contract.read_bytes()
     contract = json.loads(contract_bytes)
+    source_lock_path = args.api_source_lock.resolve()
+    source_lock_bytes = source_lock_path.read_bytes()
     dist = args.dist.resolve()
     index = json.loads((dist / "downloadable-runtime-index.json").read_text(encoding="utf-8"))
 
     api_metadata = index["apiAar"]
     api_path = dist / api_metadata["fileName"]
     require_file(api_path, api_metadata["byteSize"], api_metadata["sha256"])
-    verify_api_aar(api_path, contract, contract_bytes)
+    verify_api_aar(
+        api_path,
+        contract,
+        contract_bytes,
+        source_lock_path,
+        source_lock_bytes,
+    )
+
+    lock_metadata = index["apiSourceLock"]
+    lock_path = dist / lock_metadata["fileName"]
+    require_file(lock_path, lock_metadata["byteSize"], lock_metadata["sha256"])
+    if lock_path.read_bytes() != source_lock_bytes:
+        raise ValueError("Release API source lock differs from the source lock")
 
     indexed = {(value["component"], value["abi"]): value for value in index["bundles"]}
     for abi, metadata in contract["cpuCore"]["abis"].items():

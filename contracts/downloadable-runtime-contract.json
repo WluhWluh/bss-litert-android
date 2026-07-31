@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "bss-litert-downloadable-runtime-v1",
-  "releaseVersion": "2.1.5-bss.2-exp.1",
-  "releaseTag": "downloadable-runtime-v2.1.5-bss.2-exp.1",
+  "schemaVersion": "bss-litert-downloadable-runtime-v2",
+  "releaseVersion": "2.1.5-bss.2-exp.2",
+  "releaseTag": "downloadable-runtime-v2.1.5-bss.2-exp.2",
   "runtimeArtifactVersion": "2.1.5-bss.2",
   "baseLiteRtVersion": "2.1.5",
   "androidMinApi": 26,
@@ -9,12 +9,30 @@
     "fileName": "litert-android-2.1.5-bss.2.aar",
     "url": "https://github.com/WluhWluh/bss-litert-android/releases/download/runtime-v2.1.5-bss.2/litert-android-2.1.5-bss.2.aar",
     "byteSize": 11486057,
-    "sha256": "88cd2f7eaf1443d1c570085b1c24f239db87eb24c788a590adf5158e17443d0e",
-    "classesJarSha256": "f882634ec8c05d8cabfaddc508b9665f04a142ad3705a441d005fec62f4bc806"
+    "sha256": "88cd2f7eaf1443d1c570085b1c24f239db87eb24c788a590adf5158e17443d0e"
   },
   "apiAar": {
-    "fileName": "litert-api-2.1.5-bss.2-downloadable.aar",
-    "embeddedContractPath": "META-INF/bss-litert/downloadable-runtime-contract.json"
+    "fileName": "litert-api-2.1.5-bss.2-downloadable-loader.aar",
+    "baseFileName": "litert-api-2.1.5-bss.2-explicit-loader-base.aar",
+    "baseByteSize": 83305,
+    "baseSha256": "c1494cc831ab530d9378c27461aaae42a4db9c0562c3ec14f9527e0871e5f5e6",
+    "classesJarByteSize": 88124,
+    "classesJarSha256": "51ac3781295b7be05974391993641e1a5a06c3c6f8e9400efc49a40aad2b767b",
+    "sourceLockByteSize": 1682,
+    "sourceLockSha256": "0e1acfc3db43ea41aae5aa06561a2dad267bc6331260f81aaf43b92b04ce08cb",
+    "embeddedContractPath": "META-INF/bss-litert/downloadable-runtime-contract.json",
+    "embeddedSourceLockPath": "META-INF/bss-litert/downloadable-api-source-lock.json"
+  },
+  "explicitLoader": {
+    "className": "com.google.ai.edge.litert.LiteRtNativeLibraryLoader",
+    "configureMethod": "configureAbsolutePath(java.lang.String)",
+    "loadMethod": "load()",
+    "defaultLibraryName": "LiteRt",
+    "routedClasses": [
+      "com.google.ai.edge.litert.Environment",
+      "com.google.ai.edge.litert.CompiledModel",
+      "com.google.ai.edge.litert.TensorBuffer"
+    ]
   },
   "cpuCore": {
     "libraryName": "libLiteRt.so",

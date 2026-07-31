@@ -16,6 +16,11 @@ from deterministic_archive import write_archive
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = REPO_ROOT / "contracts/downloadable-runtime-contract.json"
+DEFAULT_API_AAR = (
+    REPO_ROOT
+    / "dist/downloadable-api/litert-api-2.1.5-bss.2-explicit-loader-base.aar"
+)
+DEFAULT_API_SOURCE_LOCK = REPO_ROOT / "config/downloadable-api-source-lock.json"
 DEFAULT_OUTPUT = REPO_ROOT / "dist/downloadable-runtime"
 DEFAULT_CACHE = REPO_ROOT / ".cache/downloadable-runtime"
 OLD_CONTRACT_ENTRY = "META-INF/bss-litert/bounded-gpu-runtime-contract.json"
@@ -148,20 +153,34 @@ def common_manifest(contract: dict, component: str, abi: str) -> dict:
 
 
 def build_api_aar(
-    source_entries: dict[str, bytes],
+    base_api_entries: dict[str, bytes],
     contract: dict,
     contract_bytes: bytes,
+    source_lock_bytes: bytes,
     output_dir: Path,
 ) -> Path:
-    classes = source_entries.get("classes.jar")
-    if classes is None or sha256_bytes(classes) != contract["sourceAar"]["classesJarSha256"]:
-        raise ValueError("Source classes.jar differs from the frozen contract")
+    metadata = contract["apiAar"]
+    if any(name.startswith("jni/") for name in base_api_entries):
+        raise ValueError("Explicit-loader base API AAR contains native code")
+    classes = base_api_entries.get("classes.jar")
+    if classes is None:
+        raise ValueError("Explicit-loader base API AAR has no classes.jar")
+    if len(classes) != metadata["classesJarByteSize"]:
+        raise ValueError("Explicit-loader classes.jar size differs from the contract")
+    if sha256_bytes(classes) != metadata["classesJarSha256"]:
+        raise ValueError("Explicit-loader classes.jar SHA-256 differs from the contract")
+    if len(source_lock_bytes) != metadata["sourceLockByteSize"]:
+        raise ValueError("Downloadable API source lock size differs from the contract")
+    if sha256_bytes(source_lock_bytes) != metadata["sourceLockSha256"]:
+        raise ValueError("Downloadable API source lock SHA-256 differs from the contract")
+
     api_entries = {
         name: data
-        for name, data in source_entries.items()
-        if not name.startswith("jni/") and name != OLD_CONTRACT_ENTRY
+        for name, data in base_api_entries.items()
+        if name not in {OLD_CONTRACT_ENTRY, metadata["embeddedContractPath"]}
     }
-    api_entries[contract["apiAar"]["embeddedContractPath"]] = contract_bytes
+    api_entries[metadata["embeddedContractPath"]] = contract_bytes
+    api_entries[metadata["embeddedSourceLockPath"]] = source_lock_bytes
     output = output_dir / contract["apiAar"]["fileName"]
     write_archive(output, api_entries)
     return output
@@ -254,18 +273,33 @@ def build_gpu_bundle(
 
 def build_release(
     source_aar: Path,
+    base_api_aar: Path,
     contract_path: Path,
+    source_lock_path: Path,
     output_dir: Path,
 ) -> None:
     contract_bytes = contract_path.read_bytes()
     contract = json.loads(contract_bytes)
     source_entries = read_archive(source_aar)
+    api_metadata = contract["apiAar"]
+    if base_api_aar.stat().st_size != api_metadata["baseByteSize"]:
+        raise ValueError("Explicit-loader base API AAR size differs from the contract")
+    if sha256_file(base_api_aar) != api_metadata["baseSha256"]:
+        raise ValueError("Explicit-loader base API AAR SHA-256 differs from the contract")
+    base_api_entries = read_archive(base_api_aar)
+    source_lock_bytes = source_lock_path.read_bytes()
     output_dir = output_dir.resolve()
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    api_aar = build_api_aar(source_entries, contract, contract_bytes, output_dir)
+    api_aar = build_api_aar(
+        base_api_entries,
+        contract,
+        contract_bytes,
+        source_lock_bytes,
+        output_dir,
+    )
     bundles = build_cpu_bundles(source_entries, contract, output_dir)
     bundles.append(build_gpu_bundle(source_entries, contract, output_dir))
 
@@ -279,6 +313,7 @@ def build_release(
             raise ValueError(f"Source AAR is missing {source}")
         (output_dir / destination).write_bytes(data)
     (output_dir / "downloadable-runtime-contract.json").write_bytes(contract_bytes)
+    (output_dir / "downloadable-api-source-lock.json").write_bytes(source_lock_bytes)
 
     base_url = (
         "https://github.com/WluhWluh/bss-litert-android/releases/download/"
@@ -297,6 +332,11 @@ def build_release(
             "sha256": sha256_file(api_aar),
             "downloadUrl": f"{base_url}/{api_aar.name}",
         },
+        "apiSourceLock": {
+            "fileName": "downloadable-api-source-lock.json",
+            "byteSize": len(source_lock_bytes),
+            "sha256": sha256_bytes(source_lock_bytes),
+        },
         "bundles": [
             {**record, "downloadUrl": f"{base_url}/{record['fileName']}"}
             for record in sorted(bundles, key=lambda value: value["fileName"])
@@ -310,13 +350,25 @@ def build_release(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-aar", type=Path)
+    parser.add_argument("--api-aar", type=Path, default=DEFAULT_API_AAR)
+    parser.add_argument(
+        "--api-source-lock",
+        type=Path,
+        default=DEFAULT_API_SOURCE_LOCK,
+    )
     parser.add_argument("--contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     args = parser.parse_args()
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     source = materialize_source_aar(args.source_aar, contract["sourceAar"], args.cache_dir)
-    build_release(source, args.contract.resolve(), args.output_dir)
+    build_release(
+        source,
+        args.api_aar.resolve(),
+        args.contract.resolve(),
+        args.api_source_lock.resolve(),
+        args.output_dir,
+    )
     print(args.output_dir.resolve())
     return 0
 
