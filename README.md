@@ -41,14 +41,30 @@ The experimental component contract is stored in
 Build it with:
 
 ```bash
+./scripts/build-downloadable-api.sh
 python3 scripts/build_downloadable_runtime_bundles.py
 python3 scripts/verify_downloadable_runtime_bundles.py
 ```
 
-The builder first verifies the immutable `runtime-v2.1.5-bss.2` source AAR,
-then writes a pure API AAR, four ABI-specific CPU ZIPs, the arm64 bounded-GPU
-ZIP, release index, and checksums under `dist/downloadable-runtime/`. No native
+The first script checks out the locked LiteRT 2.1.5 source, applies the
+zero-offset explicit-loader patch series, and builds a classes-only API AAR.
+The bundle builder then verifies that API, the immutable
+`runtime-v2.1.5-bss.2` native source AAR, and both source locks before writing
+the final API AAR, four ABI-specific CPU ZIPs, the arm64 bounded-GPU ZIP,
+release index, and checksums under `dist/downloadable-runtime/`. No native
 binary is rebuilt or modified in this process.
+
+Consumers install and verify the selected native bundle before initializing
+any other LiteRT class:
+
+```kotlin
+LiteRtNativeLibraryLoader.configureAbsolutePath(library.absolutePath)
+LiteRtNativeLibraryLoader.load()
+```
+
+Repeated configuration of the same canonical path is idempotent. Conflicting
+paths are rejected. When no path is configured, the API falls back to
+`System.loadLibrary("LiteRt")` for compatibility with a complete packaged AAR.
 
 ## x86 supplement contents
 
