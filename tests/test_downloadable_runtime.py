@@ -118,7 +118,7 @@ class DownloadableRuntimeTest(unittest.TestCase):
             script,
         )
         self.assertIn("unexpected_binary_inputs", script)
-        self.assertIn("local_jdk|remotejdk[0-9]+_", script)
+        self.assertIn("androidsdk|local_jdk|python_[^/]+|remotejdk[0-9]+_", script)
         self.assertIn("--include_commandline=false", script)
 
     def test_release_workflow_is_separate_and_pinned(self) -> None:

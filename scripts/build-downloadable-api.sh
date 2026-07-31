@@ -124,7 +124,9 @@ import sys
 
 text = sys.stdin.read()
 paths = sorted(set(re.findall(r"[A-Za-z0-9_./+@-]+\.(?:aar|so)", text)))
-toolchain = re.compile(r"^external/(?:local_jdk|remotejdk[0-9]+_[^/]+)/")
+toolchain = re.compile(
+    r"^external/(?:androidsdk|local_jdk|python_[^/]+|remotejdk[0-9]+_[^/]+)/"
+)
 print("\n".join(path for path in paths if not toolchain.match(path)))
 '
 )"
