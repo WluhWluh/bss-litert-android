@@ -90,8 +90,10 @@ locked_target="$(
   exit 1
 }
 
-bazel_common=(
+bazel_startup=(
   "--output_user_root=${output_user_root}"
+)
+bazel_command=(
   "--repository_cache=${repository_cache}"
   "--config=android_arm64"
   "--define=extra_kt_jvm_opts=-jvm-target 17"
@@ -107,11 +109,13 @@ shutdown_bazel_server() {
 trap shutdown_bazel_server EXIT
 
 cd "${source_dir}"
-"${bazel_bin}" "${bazel_common[@]}" build "${API_TARGET}"
+"${bazel_bin}" "${bazel_startup[@]}" build \
+  "${bazel_command[@]}" "${API_TARGET}"
 
 query="inputs('(^|/).+\\.(aar|so)$', deps(${API_TARGET}))"
 binary_inputs="$(
-  "${bazel_bin}" "${bazel_common[@]}" aquery --output=text "${query}"
+  "${bazel_bin}" "${bazel_startup[@]}" aquery \
+    "${bazel_command[@]}" --output=text "${query}"
 )"
 if [[ -n "${binary_inputs//[[:space:]]/}" ]]; then
   echo "Downloadable API action graph consumes a binary AAR or shared library:" >&2

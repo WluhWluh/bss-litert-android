@@ -103,6 +103,21 @@ class DownloadableRuntimeTest(unittest.TestCase):
             hashlib.sha256(lock_bytes).hexdigest(),
         )
 
+    def test_source_build_separates_bazel_startup_and_command_options(self) -> None:
+        script = (REPO_ROOT / "scripts/build-downloadable-api.sh").read_text(
+            encoding="utf-8"
+        )
+        startup = script.split("bazel_startup=(", 1)[1].split(")", 1)[0]
+        command = script.split("bazel_command=(", 1)[1].split(")", 1)[0]
+        self.assertIn("--output_user_root=", startup)
+        self.assertNotIn("--repository_cache=", startup)
+        self.assertIn("--repository_cache=", command)
+        self.assertIn(
+            '"${bazel_bin}" "${bazel_startup[@]}" build \\\n'
+            '  "${bazel_command[@]}" "${API_TARGET}"',
+            script,
+        )
+
     def test_release_workflow_is_separate_and_pinned(self) -> None:
         workflow = (
             REPO_ROOT / ".github/workflows/downloadable-runtime.yml"
