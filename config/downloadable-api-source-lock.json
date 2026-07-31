@@ -23,12 +23,12 @@
     }
   ],
   "output": {
-    "classesJarByteSize": 88124,
-    "classesJarSha256": "51ac3781295b7be05974391993641e1a5a06c3c6f8e9400efc49a40aad2b767b",
+    "classesJarByteSize": 88025,
+    "classesJarSha256": "e9bee2c5bd8e017e7d2e1a6cf7b6c1c0fe84568d2d4744b18eb2139ede181fab",
     "jvmClassMajor": 52,
     "baseAarFileName": "litert-api-2.1.5-bss.2-explicit-loader-base.aar",
-    "baseAarByteSize": 83305,
-    "baseAarSha256": "c1494cc831ab530d9378c27461aaae42a4db9c0562c3ec14f9527e0871e5f5e6"
+    "baseAarByteSize": 83190,
+    "baseAarSha256": "93728bd6560938bab098e2f362817c3b4469ad710a39a77e8018407dc4e9fa88"
   },
   "loaderApi": {
     "className": "com.google.ai.edge.litert.LiteRtNativeLibraryLoader",

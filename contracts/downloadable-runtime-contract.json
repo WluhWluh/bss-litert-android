@@ -14,12 +14,12 @@
   "apiAar": {
     "fileName": "litert-api-2.1.5-bss.2-downloadable-loader.aar",
     "baseFileName": "litert-api-2.1.5-bss.2-explicit-loader-base.aar",
-    "baseByteSize": 83305,
-    "baseSha256": "c1494cc831ab530d9378c27461aaae42a4db9c0562c3ec14f9527e0871e5f5e6",
-    "classesJarByteSize": 88124,
-    "classesJarSha256": "51ac3781295b7be05974391993641e1a5a06c3c6f8e9400efc49a40aad2b767b",
+    "baseByteSize": 83190,
+    "baseSha256": "93728bd6560938bab098e2f362817c3b4469ad710a39a77e8018407dc4e9fa88",
+    "classesJarByteSize": 88025,
+    "classesJarSha256": "e9bee2c5bd8e017e7d2e1a6cf7b6c1c0fe84568d2d4744b18eb2139ede181fab",
     "sourceLockByteSize": 1682,
-    "sourceLockSha256": "0e1acfc3db43ea41aae5aa06561a2dad267bc6331260f81aaf43b92b04ce08cb",
+    "sourceLockSha256": "f9a08269daa63e11525c94d30a581e1d09f54a0c35a83180c7765e3f73867fca",
     "embeddedContractPath": "META-INF/bss-litert/downloadable-runtime-contract.json",
     "embeddedSourceLockPath": "META-INF/bss-litert/downloadable-api-source-lock.json"
   },
