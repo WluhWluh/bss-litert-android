@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "liteRt": {
+    "repository": "https://github.com/google-ai-edge/LiteRT.git",
+    "commit": "9d26e89d88ef8785b6a1e54ec41ac8add215a125"
+  },
+  "build": {
+    "bazelVersion": "7.7.0",
+    "bazelLinuxX86_64Sha256": "fe7e799cbc9140f986b063e06800a3d4c790525075c877d00a7112669824acbf",
+    "androidApiLevel": 35,
+    "androidBuildToolsVersion": "35.0.0",
+    "hermeticPythonVersion": "3.11",
+    "target": "//litert/kotlin:litert_bss_downloadable_api_kt"
+  },
+  "patchSeries": [
+    {
+      "file": "0001-explicit-native-loader.patch",
+      "sha256": "5b5d136c496832af6277038163385ec319761dd5b98cd4702d1f11dbff83baf6"
+    },
+    {
+      "file": "0002-android-sdk-toolchain.patch",
+      "sha256": "53ee7b4040eead3da0c8fc471038affdc4fe59af4c5d279dbdc4b5e5abe3a57a"
+    }
+  ],
+  "output": {
+    "classesJarByteSize": 88124,
+    "classesJarSha256": "51ac3781295b7be05974391993641e1a5a06c3c6f8e9400efc49a40aad2b767b",
+    "jvmClassMajor": 52,
+    "baseAarFileName": "litert-api-2.1.5-bss.2-explicit-loader-base.aar",
+    "baseAarByteSize": 83305,
+    "baseAarSha256": "c1494cc831ab530d9378c27461aaae42a4db9c0562c3ec14f9527e0871e5f5e6"
+  },
+  "loaderApi": {
+    "className": "com.google.ai.edge.litert.LiteRtNativeLibraryLoader",
+    "configureMethod": "configureAbsolutePath(java.lang.String)",
+    "loadMethod": "load()",
+    "routedClasses": [
+      "com.google.ai.edge.litert.Environment",
+      "com.google.ai.edge.litert.CompiledModel",
+      "com.google.ai.edge.litert.TensorBuffer"
+    ],
+    "forbiddenClassPrefixes": [
+      "com/google/ai/edge/litert/ModelProvider",
+      "com/google/ai/edge/litert/deployment/",
+      "org/tensorflow/lite/"
+    ]
+  }
+}

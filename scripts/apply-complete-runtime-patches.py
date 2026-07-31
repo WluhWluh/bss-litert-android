@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the complete-runtime patch series to its exact LiteRT base."""
+"""Apply a locked patch series to its exact LiteRT base."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def sha256(path: Path) -> str:
 def read_lock(path: Path) -> dict:
     lock = json.loads(path.read_text(encoding="utf-8"))
     if lock.get("schemaVersion") != 1:
-        raise ValueError("Unsupported complete-runtime source lock schema.")
+        raise ValueError("Unsupported LiteRT source lock schema.")
     return lock
 
 

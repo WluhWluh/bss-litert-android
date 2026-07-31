@@ -1,0 +1,157 @@
+diff --git a/litert/kotlin/BUILD b/litert/kotlin/BUILD
+index 9f78ccb0..e347cfeb 100644
+--- a/litert/kotlin/BUILD
++++ b/litert/kotlin/BUILD
+@@ -207,6 +207,26 @@ TFLITE_JAVA_SRCS_COPIED = [
+     visibility = ["//visibility:private"],
+ ) for f in TFLITE_JAVA_SRCS_COPIED]
+ 
++BSS_LITERT_DOWNLOADABLE_API_SRCS = [
++    "src/main/kotlin/com/google/ai/edge/litert/AcceleratorProvider.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Common.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Environment.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/LiteRtException.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Model.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt",
++]
++
++# Core classes-only API used with a separately installed LiteRT runtime.
++kt_android_library(
++    name = "litert_bss_downloadable_api",
++    srcs = BSS_LITERT_DOWNLOADABLE_API_SRCS,
++    exports_manifest = 1,
++    javacopts = ["--release 17"],
++    manifest = "src/main/AndroidManifest.xml",
++    visibility = ["//visibility:public"],
++)
++
+ # TFLite Java sources w/ changes.
+ TFLITE_JAVA_SRCS_COPIED_WITH_CHANGES = [
+     # go/keep-sorted start
+@@ -228,6 +248,7 @@ kt_android_library(
+         "src/main/kotlin/com/google/ai/edge/litert/Common.kt",
+         "src/main/kotlin/com/google/ai/edge/litert/Environment.kt",
+         "src/main/kotlin/com/google/ai/edge/litert/LiteRtException.kt",
++        "src/main/kotlin/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.kt",
+         "src/main/kotlin/com/google/ai/edge/litert/Model.kt",
+         "src/main/kotlin/com/google/ai/edge/litert/ModelProvider.kt",
+         "src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt",
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
+index 6dd840e5..b87423c2 100644
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
+@@ -51,7 +51,7 @@ class Environment private constructor(handle: Long) : JniHandle(handle) {
+ 
+   companion object {
+     init {
+-      System.loadLibrary("LiteRt")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     @Throws(LiteRtException::class)
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.kt
+new file mode 100644
+index 00000000..52fb9eba
+--- /dev/null
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.kt
+@@ -0,0 +1,73 @@
++/*
++ * Copyright 2026 Booming SS contributors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.google.ai.edge.litert
++
++import java.io.File
++
++/** Configures and loads the native library used by the LiteRT Kotlin API. */
++object LiteRtNativeLibraryLoader {
++  private const val DEFAULT_LIBRARY_NAME = "LiteRt"
++  private val lock = Any()
++
++  @Volatile private var configuredPath: String? = null
++  @Volatile private var loaded = false
++  @Volatile private var loadedPath: String? = null
++
++  /** Configures an absolute native-library path before any LiteRT API class is initialized. */
++  @JvmStatic
++  fun configureAbsolutePath(absolutePath: String) {
++    val file = File(absolutePath)
++    require(file.isAbsolute) { "LiteRT native library path must be absolute: $absolutePath" }
++    val normalizedPath = file.canonicalPath
++
++    synchronized(lock) {
++      if (loaded) {
++        if (loadedPath == normalizedPath) return
++        throw IllegalStateException("LiteRT native library is already loaded")
++      }
++      val existingPath = configuredPath
++      if (existingPath != null && existingPath != normalizedPath) {
++        throw IllegalStateException(
++          "LiteRT native library path is already configured: $existingPath"
++        )
++      }
++      configuredPath = normalizedPath
++    }
++  }
++
++  /** Loads the configured native library, or the packaged `LiteRt` library when unconfigured. */
++  @JvmStatic
++  fun load() {
++    synchronized(lock) {
++      if (loaded) return
++      val path = configuredPath
++      if (path == null) {
++        System.loadLibrary(DEFAULT_LIBRARY_NAME)
++      } else {
++        System.load(path)
++      }
++      loadedPath = path
++      loaded = true
++    }
++  }
++
++  /** Returns whether this API class loader has completed native-library loading. */
++  @JvmStatic fun isLoaded(): Boolean = loaded
++
++  /** Returns the configured canonical path, or null when packaged-library fallback is selected. */
++  @JvmStatic fun configuredAbsolutePath(): String? = configuredPath
++}
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+index b26380cc..df5da7ef 100644
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+@@ -499,7 +499,7 @@ private constructor(
+ 
+   companion object {
+     init {
+-      System.loadLibrary("LiteRt")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     private fun createFromAsset(
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
+index 3fbc4c07..3a96430b 100644
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
+@@ -97,7 +97,7 @@ class TensorBuffer internal constructor(handle: Long) : JniHandle(handle) {
+ 
+   companion object {
+     init {
+-      System.loadLibrary("LiteRt")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     @JvmStatic private external fun nativeWriteInt(handle: Long, data: IntArray)
