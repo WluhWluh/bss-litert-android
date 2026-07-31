@@ -34,7 +34,8 @@ Each release runner:
 
 1. Applies both patches with zero offset and no fuzz.
 2. Builds only the core Kotlin API target, without JNI or model-provider code.
-3. Rejects any AAR or shared-library input in that target's Bazel action graph.
+3. Rejects AAR or shared-library inputs in that target's Bazel action graph,
+   except the pinned host JDK libraries Bazel uses to execute its build tools.
 4. Verifies JVM bytecode, public loader methods, all three routed static
    initializers, packaged-library fallback, and the absence of native entries.
 5. Verifies the original multi-ABI AAR before extracting native components.

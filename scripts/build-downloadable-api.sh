@@ -115,11 +115,22 @@ cd "${source_dir}"
 query="inputs('(^|/).+\\.(aar|so)$', deps(${API_TARGET}))"
 binary_inputs="$(
   "${bazel_bin}" "${bazel_startup[@]}" aquery \
-    "${bazel_command[@]}" --output=text "${query}"
+    "${bazel_command[@]}" --include_commandline=false --output=text "${query}"
 )"
-if [[ -n "${binary_inputs//[[:space:]]/}" ]]; then
+unexpected_binary_inputs="$(
+  printf '%s\n' "${binary_inputs}" | python3 -c '
+import re
+import sys
+
+text = sys.stdin.read()
+paths = sorted(set(re.findall(r"[A-Za-z0-9_./+@-]+\.(?:aar|so)", text)))
+toolchain = re.compile(r"^external/(?:local_jdk|remotejdk[0-9]+_[^/]+)/")
+print("\n".join(path for path in paths if not toolchain.match(path)))
+'
+)"
+if [[ -n "${unexpected_binary_inputs//[[:space:]]/}" ]]; then
   echo "Downloadable API action graph consumes a binary AAR or shared library:" >&2
-  echo "${binary_inputs}" >&2
+  echo "${unexpected_binary_inputs}" >&2
   exit 1
 fi
 
