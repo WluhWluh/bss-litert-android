@@ -1,0 +1,113 @@
+name: Build downloadable LiteRT runtime bundles
+
+on:
+  push:
+    tags: ['downloadable-runtime-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: litert-downloadable-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [a, b]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a3099c25c9b5f57c80f8e72fc2e8d2d85f6509b6 # v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        run: |
+          source config/downloadable-runtime.env
+          test "${GITHUB_REF_NAME}" = "${DOWNLOADABLE_RELEASE_TAG}"
+
+      - name: Run packaging tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Build and verify component bundles
+        run: |
+          python3 scripts/build_downloadable_runtime_bundles.py
+          python3 scripts/verify_downloadable_runtime_bundles.py
+
+      - name: Upload independent candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: downloadable-runtime-${{ matrix.replica }}
+          path: dist/downloadable-runtime/*
+          if-no-files-found: error
+          compression-level: 0
+
+  compare-and-publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Download candidate A
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v8
+        with:
+          name: downloadable-runtime-a
+          path: candidates/a
+
+      - name: Download candidate B
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v8
+        with:
+          name: downloadable-runtime-b
+          path: candidates/b
+
+      - name: Require byte-identical clean-runner outputs
+        run: diff -rq candidates/a candidates/b
+
+      - name: Verify release checksums
+        run: |
+          cd candidates/a
+          sha256sum -c SHA256SUMS
+
+      - name: Attest downloadable runtime assets
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            candidates/a/*.aar
+            candidates/a/*.zip
+            candidates/a/downloadable-runtime-index.json
+            candidates/a/downloadable-runtime-contract.json
+
+      - name: Upload verified release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: downloadable-runtime-${{ github.sha }}
+          path: candidates/a/*
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish experimental GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" candidates/a/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --prerelease \
+            --title "Booming SS downloadable LiteRT runtime experiment" \
+            --notes-file docs/downloadable-runtime-2.1.5-bss.2-exp.1.md

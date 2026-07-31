@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "bss-litert-downloadable-runtime-v1",
+  "releaseVersion": "2.1.5-bss.2-exp.1",
+  "releaseTag": "downloadable-runtime-v2.1.5-bss.2-exp.1",
+  "runtimeArtifactVersion": "2.1.5-bss.2",
+  "baseLiteRtVersion": "2.1.5",
+  "androidMinApi": 26,
+  "sourceAar": {
+    "fileName": "litert-android-2.1.5-bss.2.aar",
+    "url": "https://github.com/WluhWluh/bss-litert-android/releases/download/runtime-v2.1.5-bss.2/litert-android-2.1.5-bss.2.aar",
+    "byteSize": 11486057,
+    "sha256": "88cd2f7eaf1443d1c570085b1c24f239db87eb24c788a590adf5158e17443d0e",
+    "classesJarSha256": "f882634ec8c05d8cabfaddc508b9665f04a142ad3705a441d005fec62f4bc806"
+  },
+  "apiAar": {
+    "fileName": "litert-api-2.1.5-bss.2-downloadable.aar",
+    "embeddedContractPath": "META-INF/bss-litert/downloadable-runtime-contract.json"
+  },
+  "cpuCore": {
+    "libraryName": "libLiteRt.so",
+    "systemDependencies": [
+      "libandroid.so",
+      "libdl.so",
+      "libGLESv3.so",
+      "libEGL.so",
+      "libm.so",
+      "liblog.so",
+      "libc.so"
+    ],
+    "abis": {
+      "arm64-v8a": {
+        "sourcePath": "jni/arm64-v8a/libLiteRt.so",
+        "bundleFileName": "litert-cpu-core-2.1.5-bss.2-arm64-v8a.zip",
+        "byteSize": 5328296,
+        "sha256": "ae2b996fde27021b070e88b56eebc9626a5261feb72f09791bdac38b2f09abd2",
+        "elfClass": "ELF64",
+        "machine": "EM_AARCH64",
+        "soname": "libLiteRt.so"
+      },
+      "armeabi-v7a": {
+        "sourcePath": "jni/armeabi-v7a/libLiteRt.so",
+        "bundleFileName": "litert-cpu-core-2.1.5-bss.2-armeabi-v7a.zip",
+        "byteSize": 3504124,
+        "sha256": "836ee7a2321c9453f02658b6774fc4c5951716432b450ba6bc4e9a94fe524e6c",
+        "elfClass": "ELF32",
+        "machine": "EM_ARM",
+        "soname": "libLiteRt.so"
+      },
+      "x86_64": {
+        "sourcePath": "jni/x86_64/libLiteRt.so",
+        "bundleFileName": "litert-cpu-core-2.1.5-bss.2-x86_64.zip",
+        "byteSize": 7272904,
+        "sha256": "6d5b2f35d536a3b2d38b26d26328cc9c259133ef2aa0413ec554cd7ef84f6604",
+        "elfClass": "ELF64",
+        "machine": "EM_X86_64",
+        "soname": "libLiteRt.so"
+      },
+      "x86": {
+        "sourcePath": "jni/x86/libLiteRt.so",
+        "bundleFileName": "litert-cpu-core-2.1.5-bss.2-x86.zip",
+        "byteSize": 7482132,
+        "sha256": "02b6556ec235926c11eb0c067eb16e459adcddb1568a42eefe0c40f4cc4b59af",
+        "elfClass": "ELF32",
+        "machine": "EM_386",
+        "soname": "LiteRt",
+        "systemDependenciesOverride": [
+          "libandroid.so",
+          "libdl.so",
+          "libm.so",
+          "liblog.so",
+          "libc.so"
+        ]
+      }
+    }
+  },
+  "boundedGpu": {
+    "abi": "arm64-v8a",
+    "bundleFileName": "litert-bounded-gpu-2.1.5-bss.2-arm64-v8a.zip",
+    "requiredCoreSha256": "ae2b996fde27021b070e88b56eebc9626a5261feb72f09791bdac38b2f09abd2",
+    "profile": {
+      "schemaVersion": 1,
+      "profileId": "gpu-opencl-bounded-fp32-v1",
+      "precision": "FP32",
+      "backend": "OpenCL",
+      "kernelBatchSize": 1,
+      "commandQueueWindowSize": 1
+    },
+    "files": [
+      {
+        "path": "libLiteRtClGlAccelerator.so",
+        "sourcePath": "jni/arm64-v8a/libLiteRtClGlAccelerator.so",
+        "byteSize": 2728920,
+        "sha256": "83f2be273fdc0391ad977c8889d65ba6b947c3ebabc432bf51829e5c9e91f93c",
+        "elfClass": "ELF64",
+        "machine": "EM_AARCH64",
+        "soname": "libLiteRtClGlAccelerator.so",
+        "needed": [
+          "libGLESv3.so",
+          "libEGL.so",
+          "libm.so",
+          "libdl.so",
+          "liblog.so",
+          "libc.so"
+        ],
+        "runtimeLoads": [
+          "libBssOcl.so"
+        ]
+      },
+      {
+        "path": "libBssOcl.so",
+        "sourcePath": "jni/arm64-v8a/libBssOcl.so",
+        "byteSize": 11592,
+        "sha256": "fc7deeb3081dda82cffbdc6d1bd8460c0491bbbc48478b781028e9413e8cb6f8",
+        "elfClass": "ELF64",
+        "machine": "EM_AARCH64",
+        "soname": "libBssOcl.so",
+        "needed": [
+          "libOpenCL.so",
+          "libdl.so",
+          "liblog.so",
+          "libc.so"
+        ]
+      }
+    ]
+  },
+  "licenseAssets": [
+    "LICENSE-LiteRT.txt",
+    "THIRD_PARTY_NOTICE-LiteRT.txt"
+  ]
+}
