@@ -31,3 +31,7 @@ The release contains the combined AAR, deterministic local-Maven bundle,
 runtime contract, build manifest, licenses, checksums, and GitHub provenance.
 Two clean runners must produce byte-identical outputs. All packaged ARM64 ELF
 LOAD segments are required to have at least 16 KiB alignment.
+
+Post-publication ARM64 behavioral evidence, including matching positive
+dispatch/event-wait counts and ORT numerical parity, is recorded in
+`bounded-gpu-runtime-2.2.0-bss.1-device-validation.md`.
