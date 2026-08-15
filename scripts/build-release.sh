@@ -82,9 +82,19 @@ find "${source_dir}" -type f \
        -o -name WORKSPACE -o -name 'WORKSPACE.*' -o -name '*.sh' \) \
     -exec sed -i 's/\r$//' {} +
 
-android_home="${work_dir}/android-sdk"
-mkdir -p "${android_home}"
-export ANDROID_HOME="${android_home}"
+[[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}" ]] || {
+    echo "ANDROID_HOME must point to a Linux Android SDK." >&2
+    exit 1
+}
+[[ -f "${ANDROID_HOME}/platforms/android-${ANDROID_COMPILE_SDK}/android.jar" ]] || {
+    echo "Android platform ${ANDROID_COMPILE_SDK} is not installed." >&2
+    exit 1
+}
+[[ -x "${ANDROID_HOME}/build-tools/${ANDROID_BUILD_TOOLS_VERSION}/aapt2" ]] || {
+    echo "Android build tools ${ANDROID_BUILD_TOOLS_VERSION} are not installed." >&2
+    exit 1
+}
+export ANDROID_HOME
 export ANDROID_NDK_HOME="${ndk_dir}"
 export ANDROID_NDK_ROOT="${ndk_dir}"
 

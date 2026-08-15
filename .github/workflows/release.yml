@@ -34,6 +34,14 @@ jobs:
           sudo rm -rf /usr/local/lib/android/sdk/ndk
           df -h /
 
+      - name: Install locked Android SDK components
+        run: |
+          source config/release.env
+          yes | sdkmanager --licenses >/dev/null || test "${PIPESTATUS[1]}" -eq 0
+          sdkmanager \
+            "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
+            "platforms;android-${ANDROID_COMPILE_SDK}"
+
       - name: Build and package x86 runtime
         env:
           BAZEL_JOBS: 4
