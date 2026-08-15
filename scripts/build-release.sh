@@ -15,7 +15,7 @@ jobs="${BAZEL_JOBS:-4}"
 mkdir -p "${work_dir}" "${cache_dir}" "${dist_dir}"
 find "${dist_dir}" -mindepth 1 -maxdepth 1 -type f -delete
 
-for command in curl git patch python3 sha256sum unzip; do
+for command in cmp curl git patch python3 sha256sum unzip; do
     command -v "${command}" >/dev/null || {
         echo "Required command not found: ${command}" >&2
         exit 1
@@ -65,8 +65,9 @@ if [[ -d "${source_dir}/.git" ]]; then
         echo "Expected LiteRT commit ${LITERT_COMMIT}, got ${actual_commit}." >&2
         exit 1
     fi
-elif [[ -n "${LITERT_SOURCE_DIR:-}" && -f "${source_dir}/WORKSPACE" ]]; then
-    echo "Using explicit non-Git LiteRT source override: ${source_dir}"
+elif [[ -n "${LITERT_SOURCE_DIR:-}" ]]; then
+    echo "LITERT_SOURCE_DIR must be the pinned Git checkout: ${source_dir}" >&2
+    exit 1
 else
     git clone --filter=blob:none --branch "${LITERT_TAG}" --depth 1 \
         "${LITERT_REPOSITORY}" "${source_dir}"
@@ -81,6 +82,35 @@ find "${source_dir}" -type f \
     \( -name BUILD -o -name 'BUILD.*' -o -name '*.bzl' -o -name '*.bazel' \
        -o -name WORKSPACE -o -name 'WORKSPACE.*' -o -name '*.sh' \) \
     -exec sed -i 's/\r$//' {} +
+
+soname_patch="${repo_root}/${X86_SONAME_PATCH}"
+echo "${X86_SONAME_PATCH_SHA256}  ${soname_patch}" | sha256sum -c -
+if git -C "${source_dir}" apply --check "${soname_patch}"; then
+    git -C "${source_dir}" apply "${soname_patch}"
+elif ! git -C "${source_dir}" apply --reverse --check "${soname_patch}"; then
+    echo "x86 SONAME patch neither applies nor matches the source tree." >&2
+    exit 1
+fi
+actual_changes="$(
+    git -C "${source_dir}" status --short \
+        --untracked-files=all --ignored=matching
+)"
+expected_changes=$' M litert/kotlin/BUILD\n M tflite/build_def.bzl'
+if [[ "${actual_changes}" != "${expected_changes}" ]]; then
+    echo "Unexpected LiteRT source changes after applying the SONAME patch:" >&2
+    echo "${actual_changes}" >&2
+    exit 1
+fi
+if ! cmp -s \
+    <(git -C "${source_dir}" diff --binary --no-ext-diff -- \
+        litert/kotlin/BUILD tflite/build_def.bzl) \
+    "${soname_patch}"; then
+    echo "LiteRT source diff does not exactly match the locked SONAME patch." >&2
+    git -C "${source_dir}" diff --binary --no-ext-diff -- \
+        litert/kotlin/BUILD tflite/build_def.bzl >&2
+    exit 1
+fi
+git -C "${source_dir}" diff --check
 
 [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}" ]] || {
     echo "ANDROID_HOME must point to a Linux Android SDK." >&2
@@ -124,7 +154,8 @@ install -m 0644 "${jni_so}" "${dist_dir}/${jni_name}"
 "${repo_root}/scripts/verify-elf.sh" \
     "${dist_dir}/${runtime_name}" \
     "${dist_dir}/${jni_name}" \
-    "${ndk_dir}"
+    "${ndk_dir}" \
+    "${ANDROID_API_LEVEL}"
 
 output_base="$(
     "${bazel_bin}" --output_user_root="${output_user_root}" info output_base
@@ -138,12 +169,14 @@ python3 "${repo_root}/scripts/package_release.py" \
     --jni-library "${dist_dir}/${jni_name}" \
     --source-license "${source_dir}/LICENSE" \
     --third-party-licenses "${work_dir}/THIRD_PARTY_LICENSES.txt" \
-    --notices "${repo_root}/THIRD_PARTY_NOTICES.md" \
-    --validation-report "${repo_root}/docs/x86-validation-2.2.0-bss.1.md" \
+    --notices "${repo_root}/packaging/x86/THIRD_PARTY_NOTICES.md" \
+    --validation-report "${repo_root}/docs/x86-validation-2.2.0-bss.2.md" \
     --dist-dir "${dist_dir}" \
     --artifact-version "${ARTIFACT_VERSION}" \
     --litert-version "${LITERT_VERSION}" \
     --litert-commit "${LITERT_COMMIT}" \
+    --source-patch "${soname_patch}" \
+    --source-patch-sha256 "${X86_SONAME_PATCH_SHA256}" \
     --bazel-version "${BAZEL_VERSION}" \
     --ndk-version "${ANDROID_NDK_VERSION}" \
     --android-api-level "${ANDROID_API_LEVEL}"

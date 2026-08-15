@@ -30,6 +30,7 @@ jobs:
             scripts/build-complete-runtime.sh \
             scripts/build-downloadable-api.sh \
             scripts/build-release.sh \
+            scripts/run-x86-smoke.sh \
             scripts/stage-maven-publication.sh \
             scripts/verify-elf.sh \
             smoke/gradlew
@@ -98,19 +99,21 @@ jobs:
               --jni-library "$tmp/liblitert_jni.so" \
               --source-license "$tmp/LICENSE" \
               --third-party-licenses "$tmp/THIRD_PARTY_LICENSES.txt" \
-              --notices THIRD_PARTY_NOTICES.md \
-              --validation-report docs/x86-validation-2.2.0-bss.1.md \
+              --notices packaging/x86/THIRD_PARTY_NOTICES.md \
+              --validation-report docs/x86-validation-2.2.0-bss.2.md \
               --dist-dir "$tmp/$output" \
-              --artifact-version 2.2.0-bss.1 \
+              --artifact-version 2.2.0-bss.2 \
               --litert-version 2.2.0 \
               --litert-commit 145c7523ff08d5e57ab5c582141775eea47da9c7 \
+              --source-patch patches/litert-2.2.0-x86-soname.patch \
+              --source-patch-sha256 986ab875563140cbc20ccc40a62e09cc8d984b640bdb0f87e11bb2680e5188e8 \
               --bazel-version 7.7.0 \
               --ndk-version 25.1.8937393 \
-              --android-api-level 23 >/dev/null
+              --android-api-level 26 >/dev/null
           done
           cmp \
-            "$tmp/first/litert-2.2.0-bss.1-android-x86.aar" \
-            "$tmp/second/litert-2.2.0-bss.1-android-x86.aar"
+            "$tmp/first/litert-2.2.0-bss.2-android-x86.aar" \
+            "$tmp/second/litert-2.2.0-bss.2-android-x86.aar"
 
       - name: Check version agreement
         run: |

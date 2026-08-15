@@ -50,7 +50,7 @@ enum {
 };
 
 static const char *const kLogTag = "BssBoundedOpenCl";
-static const char *const kArtifactVersion = "2.2.0-bss.1";
+static const char *const kArtifactVersion = "2.2.0-bss.2";
 static const char *const kProfileId = "gpu-opencl-bounded-fp32-v1";
 
 static pthread_once_t g_init_once = PTHREAD_ONCE_INIT;

@@ -26,6 +26,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact-version", required=True)
     parser.add_argument("--litert-version", required=True)
     parser.add_argument("--litert-commit", required=True)
+    parser.add_argument("--source-patch", type=Path, required=True)
+    parser.add_argument("--source-patch-sha256", required=True)
     parser.add_argument("--bazel-version", required=True)
     parser.add_argument("--ndk-version", required=True)
     parser.add_argument("--android-api-level", type=int, required=True)
@@ -50,6 +52,8 @@ def write_zip_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
 
 def main() -> int:
     args = parse_args()
+    if sha256(args.source_patch) != args.source_patch_sha256:
+        raise ValueError("Source patch SHA-256 differs from the release identity")
     dist_dir = args.dist_dir.resolve()
     dist_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +67,7 @@ def main() -> int:
     third_party_path = dist_dir / "THIRD_PARTY_LICENSES.txt"
     notices_path = dist_dir / "THIRD_PARTY_NOTICES.md"
     validation_path = dist_dir / args.validation_report.name
+    source_patch_path = dist_dir / args.source_patch.name
 
     if args.runtime_library.resolve() != runtime_path:
         shutil.copyfile(args.runtime_library, runtime_path)
@@ -72,11 +77,15 @@ def main() -> int:
     shutil.copyfile(args.third_party_licenses, third_party_path)
     shutil.copyfile(args.notices, notices_path)
     shutil.copyfile(args.validation_report, validation_path)
+    if args.source_patch.resolve() != source_patch_path:
+        shutil.copyfile(args.source_patch, source_patch_path)
 
     manifest = (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
-        '    package="io.github.wluhwluh.bss.litert.x86" />\n'
+        '    package="io.github.wluhwluh.bss.litert.x86">\n'
+        f'    <uses-sdk android:minSdkVersion="{args.android_api_level}" />\n'
+        '</manifest>\n'
     ).encode("utf-8")
     with zipfile.ZipFile(aar_path, "w") as archive:
         write_zip_entry(archive, "AndroidManifest.xml", manifest)
@@ -95,6 +104,12 @@ def main() -> int:
             "commit": args.litert_commit,
             "repository": "https://github.com/google-ai-edge/LiteRT",
         },
+        "sourcePatches": [
+            {
+                "fileName": args.source_patch.name,
+                "sha256": args.source_patch_sha256,
+            }
+        ],
         "toolchain": {
             "bazel": args.bazel_version,
             "androidNdk": args.ndk_version,
@@ -122,15 +137,21 @@ def main() -> int:
                 "sha256": sha256(jni_path),
             },
             aar_name: {"bytes": aar_path.stat().st_size, "sha256": sha256(aar_path)},
+            args.source_patch.name: {
+                "bytes": source_patch_path.stat().st_size,
+                "sha256": sha256(source_patch_path),
+            },
         },
         "nativeLibraries": {
             "libLiteRt.so": {
                 "role": "LiteRT implementation and C runtime",
                 "sourceTarget": "//litert/kotlin:LiteRt",
+                "soname": "libLiteRt.so",
             },
             "liblitert_jni.so": {
                 "role": "LiteRT Kotlin API JNI bridge",
                 "sourceTarget": "//litert/kotlin:litert_jni",
+                "soname": "liblitert_jni.so",
             },
         },
     }

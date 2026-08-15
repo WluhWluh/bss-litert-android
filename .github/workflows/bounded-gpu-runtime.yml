@@ -133,5 +133,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME" candidates/a/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "Booming SS LiteRT 2.2.0 bounded GPU runtime" \
-            --notes-file docs/bounded-gpu-runtime-2.2.0-bss.1.md
+            --title "Booming SS LiteRT 2.2.0-bss.2 bounded GPU runtime" \
+            --notes-file docs/bounded-gpu-runtime-2.2.0-bss.2.md

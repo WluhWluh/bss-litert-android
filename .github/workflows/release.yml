@@ -88,12 +88,7 @@ jobs:
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none
-          script: |
-            ./smoke/gradlew -p smoke assembleDebug assembleDebugAndroidTest --stacktrace
-            adb install --no-streaming -r smoke/app/build/outputs/apk/debug/app-debug.apk
-            adb install --no-streaming -r smoke/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -r -e class io.github.wluhwluh.bss.litert.smoke.LiteRtX86SmokeTest io.github.wluhwluh.bss.litert.smoke.test/androidx.test.runner.AndroidJUnitRunner | tee dist/api26-x86-smoke.txt
-            grep -Fq 'OK (1 test)' dist/api26-x86-smoke.txt
+          script: bash scripts/run-x86-smoke.sh
 
       - name: Finalize checksums
         run: |

@@ -17,6 +17,15 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from deterministic_archive import archive_bytes, write_archive  # noqa: E402
 
 
+def read_environment(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            values[key] = value
+    return values
+
+
 class BoundedGpuRuntimeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.contract_path = (
@@ -47,6 +56,24 @@ class BoundedGpuRuntimeTest(unittest.TestCase):
         self.assertIn("KERNEL_BATCH_SIZE = 1", java_source)
         self.assertIn("COMMAND_QUEUE_WINDOW_SIZE = 1", java_source)
 
+        environment = read_environment(
+            REPO_ROOT / "config/bounded-gpu-runtime.env"
+        )
+        artifact_version = environment["ARTIFACT_VERSION"]
+        self.assertEqual("2.2.0-bss.2", artifact_version)
+        self.assertEqual(artifact_version, capability["artifactVersion"])
+        self.assertEqual(
+            f"io.github.wluhwluh.bss:litert-android:{artifact_version}",
+            self.contract["coordinate"],
+        )
+        self.assertEqual(artifact_version, environment["X86_SUPPLEMENT_VERSION"])
+        self.assertIn(f"/v{artifact_version}/", environment["X86_SUPPLEMENT_URL"])
+        self.assertTrue(
+            environment["X86_SUPPLEMENT_URL"].endswith(
+                f"/litert-{artifact_version}-android-x86.aar"
+            )
+        )
+
         source_patch = (
             REPO_ROOT
             / "patches/bounded-gpu-runtime"
@@ -75,6 +102,7 @@ class BoundedGpuRuntimeTest(unittest.TestCase):
         self.assertIn("replica: [a, b]", workflow)
         self.assertIn("diff -rq candidates/a candidates/b", workflow)
         self.assertIn("runtime-v${ARTIFACT_VERSION}", workflow)
+        self.assertIn("bounded-gpu-runtime-2.2.0-bss.2.md", workflow)
         uses = re.findall(r"^\s*uses:\s*[^@\s]+@([^\s#]+)", workflow, re.MULTILINE)
         self.assertGreaterEqual(len(uses), 6)
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", value) for value in uses))
@@ -105,7 +133,7 @@ class BoundedGpuRuntimeTest(unittest.TestCase):
         self.assertNotIn("patch_runtime_kernel_batch.py", build)
         self.assertIn(
             "X86_SUPPLEMENT_SHA256="
-            "5d38611018a2ce102577457b2eca188fb2bb582a51ce35c10c4aed9e392fb3bd",
+            "6f287a3db512e62bb0a9be02b2df7e984da6c795b9e30095bbb9361e004ffdf6",
             environment,
         )
 
@@ -169,7 +197,7 @@ class BoundedGpuRuntimeTest(unittest.TestCase):
                     b"Failed to set Booming SS bounded GPU kernelBatchSize."
                 ),
                 "arm64-shim.so": (
-                    b"2.2.0-bss.1 gpu-opencl-bounded-fp32-v1 "
+                    b"2.2.0-bss.2 gpu-opencl-bounded-fp32-v1 "
                     b"nativeGetCapabilitySchemaVersion nativeGetEventWaitCount"
                 ),
             }
