@@ -53,12 +53,20 @@ class DownloadableRuntimeTest(unittest.TestCase):
                 hashes.add(file_metadata["sha256"])
         self.assertEqual(8, len(hashes))
 
-    def test_per_abi_soname_and_dependency_anomalies_are_explicit(self) -> None:
+    def test_per_abi_sonames_and_dependencies_match_the_loader_contract(self) -> None:
         cpu = self.contract["cpuCore"]["abis"]
         x86_runtime, x86_jni = cpu["x86"]["files"]
         arm64_runtime, arm64_jni = cpu["arm64-v8a"]["files"]
-        self.assertEqual("LiteRt", x86_runtime["soname"])
-        self.assertEqual("litert_jni", x86_jni["soname"])
+        self.assertEqual("libLiteRt.so", x86_runtime["soname"])
+        self.assertEqual("liblitert_jni.so", x86_jni["soname"])
+        self.assertEqual(
+            "83132f9eb2fbbc0858a2d96c45bc5cb39c54922c9f7f5aed26bb5563ce2cb21c",
+            x86_runtime["sha256"],
+        )
+        self.assertEqual(
+            "570452100ba34041b95b066310cbc8db7a14a14d66dc51742727bbe35afc8699",
+            x86_jni["sha256"],
+        )
         self.assertEqual("libLiteRt.so", arm64_runtime["soname"])
         self.assertEqual("litert_jni", arm64_jni["soname"])
         self.assertNotIn("libGLESv3.so", x86_runtime["needed"])
@@ -88,10 +96,10 @@ class DownloadableRuntimeTest(unittest.TestCase):
     def test_api_and_native_sources_are_locked_independently(self) -> None:
         source = self.contract["sourceAar"]
         self.assertEqual(
-            "20b4cf61a4cb5894c3f4d6540c09898743b6f5f7ea5d95c5fa9fb22aa54c288f",
+            "35b55a0ef9a6d28e56271a9bc3b6b6cc8a84b16732b17b34b2a6b51ee7be3124",
             source["sha256"],
         )
-        self.assertEqual("2.2.0-bss.1", self.contract["runtimeArtifactVersion"])
+        self.assertEqual("2.2.0-bss.2", self.contract["runtimeArtifactVersion"])
         self.assertEqual(
             "bss-litert-downloadable-runtime-v3",
             self.contract["schemaVersion"],

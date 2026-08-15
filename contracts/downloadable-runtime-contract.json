@@ -1,25 +1,25 @@
 {
   "schemaVersion": "bss-litert-downloadable-runtime-v3",
-  "releaseVersion": "2.2.0-bss.1-exp.1",
-  "releaseTag": "downloadable-runtime-v2.2.0-bss.1-exp.1",
-  "runtimeArtifactVersion": "2.2.0-bss.1",
+  "releaseVersion": "2.2.0-bss.2-exp.1",
+  "releaseTag": "downloadable-runtime-v2.2.0-bss.2-exp.1",
+  "runtimeArtifactVersion": "2.2.0-bss.2",
   "baseLiteRtVersion": "2.2.0",
   "androidMinApi": 26,
   "sourceAar": {
-    "fileName": "litert-android-2.2.0-bss.1.aar",
-    "url": "https://github.com/WluhWluh/bss-litert-android/releases/download/runtime-v2.2.0-bss.1/litert-android-2.2.0-bss.1.aar",
-    "byteSize": 13102717,
-    "sha256": "20b4cf61a4cb5894c3f4d6540c09898743b6f5f7ea5d95c5fa9fb22aa54c288f"
+    "fileName": "litert-android-2.2.0-bss.2.aar",
+    "url": "https://github.com/WluhWluh/bss-litert-android/releases/download/runtime-v2.2.0-bss.2/litert-android-2.2.0-bss.2.aar",
+    "byteSize": 13102718,
+    "sha256": "35b55a0ef9a6d28e56271a9bc3b6b6cc8a84b16732b17b34b2a6b51ee7be3124"
   },
   "apiAar": {
-    "fileName": "litert-api-2.2.0-bss.1-downloadable-loader.aar",
-    "baseFileName": "litert-api-2.2.0-bss.1-explicit-loader-base.aar",
+    "fileName": "litert-api-2.2.0-bss.2-downloadable-loader.aar",
+    "baseFileName": "litert-api-2.2.0-bss.2-explicit-loader-base.aar",
     "baseByteSize": 84348,
     "baseSha256": "1542f1c632ee89c3a790382015995fd2b0d1a1295222bc62af8b37f76f8355a4",
     "classesJarByteSize": 89690,
     "classesJarSha256": "b1d55472781bedb7f08bac108a1ee5cebe96c4663de36269d18b80f96d2ed1ff",
     "sourceLockByteSize": 2138,
-    "sourceLockSha256": "b2c872c9694b76edaea0eaf7ee6355d79e67671dec43c0eca2ccae75d97a735d",
+    "sourceLockSha256": "f1c476d131c2f131ab1f8a90828e620ffd21266a7462373b6627e5bea003883e",
     "embeddedContractPath": "META-INF/bss-litert/downloadable-runtime-contract.json",
     "embeddedSourceLockPath": "META-INF/bss-litert/downloadable-api-source-lock.json"
   },
@@ -43,7 +43,7 @@
     ],
     "abis": {
       "arm64-v8a": {
-        "bundleFileName": "litert-cpu-core-2.2.0-bss.1-arm64-v8a.zip",
+        "bundleFileName": "litert-cpu-core-2.2.0-bss.2-arm64-v8a.zip",
         "files": [
           {
             "role": "runtime",
@@ -88,7 +88,7 @@
         ]
       },
       "armeabi-v7a": {
-        "bundleFileName": "litert-cpu-core-2.2.0-bss.1-armeabi-v7a.zip",
+        "bundleFileName": "litert-cpu-core-2.2.0-bss.2-armeabi-v7a.zip",
         "files": [
           {
             "role": "runtime",
@@ -133,7 +133,7 @@
         ]
       },
       "x86_64": {
-        "bundleFileName": "litert-cpu-core-2.2.0-bss.1-x86_64.zip",
+        "bundleFileName": "litert-cpu-core-2.2.0-bss.2-x86_64.zip",
         "files": [
           {
             "role": "runtime",
@@ -178,17 +178,17 @@
         ]
       },
       "x86": {
-        "bundleFileName": "litert-cpu-core-2.2.0-bss.1-x86.zip",
+        "bundleFileName": "litert-cpu-core-2.2.0-bss.2-x86.zip",
         "files": [
           {
             "role": "runtime",
             "path": "libLiteRt.so",
             "sourcePath": "jni/x86/libLiteRt.so",
             "byteSize": 8349908,
-            "sha256": "ecd4312ea6ba88e61c4128e6e33b37622e982bdef4311e0300fd7ab1d2ad67ff",
+            "sha256": "83132f9eb2fbbc0858a2d96c45bc5cb39c54922c9f7f5aed26bb5563ce2cb21c",
             "elfClass": "ELF32",
             "machine": "EM_386",
-            "soname": "LiteRt",
+            "soname": "libLiteRt.so",
             "loadAlignment": 16384,
             "needed": [
               "libdl.so",
@@ -202,10 +202,10 @@
             "path": "liblitert_jni.so",
             "sourcePath": "jni/x86/liblitert_jni.so",
             "byteSize": 783540,
-            "sha256": "3a693ff65bdb8b8dd5fc425676e7510e3fdd810b497bb188e5bed60373235883",
+            "sha256": "570452100ba34041b95b066310cbc8db7a14a14d66dc51742727bbe35afc8699",
             "elfClass": "ELF32",
             "machine": "EM_386",
-            "soname": "litert_jni",
+            "soname": "liblitert_jni.so",
             "loadAlignment": 16384,
             "needed": [
               "libandroid.so",
@@ -225,7 +225,7 @@
   "boundedGpu": {
     "componentManifestSchemaVersion": 2,
     "abi": "arm64-v8a",
-    "bundleFileName": "litert-bounded-gpu-2.2.0-bss.1-arm64-v8a.zip",
+    "bundleFileName": "litert-bounded-gpu-2.2.0-bss.2-arm64-v8a.zip",
     "requiredCore": {
       "abi": "arm64-v8a",
       "librarySha256": "97355a36cb8ac7628cf407773291e98da79f3ef184cc43cb0e57dedf5f0c0637",
@@ -265,7 +265,7 @@
         "path": "libBssOcl.so",
         "sourcePath": "jni/arm64-v8a/libBssOcl.so",
         "byteSize": 11592,
-        "sha256": "da31c354c8450963d2ca3677d346a2dc99fab0854964039ebf5bf41673cbf3cb",
+        "sha256": "a8490866ed4b42e2c5b3bf39e7a0c5b4f03fe8a977c3d79b52ca31dd4d001bee",
         "elfClass": "ELF64",
         "machine": "EM_AARCH64",
         "soname": "libBssOcl.so",

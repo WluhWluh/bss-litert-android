@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = REPO_ROOT / "contracts/downloadable-runtime-contract.json"
 DEFAULT_API_AAR = (
     REPO_ROOT
-    / "dist/downloadable-api/litert-api-2.2.0-bss.1-explicit-loader-base.aar"
+    / "dist/downloadable-api/litert-api-2.2.0-bss.2-explicit-loader-base.aar"
 )
 DEFAULT_API_SOURCE_LOCK = REPO_ROOT / "config/downloadable-api-source-lock.json"
 DEFAULT_OUTPUT = REPO_ROOT / "dist/downloadable-runtime"

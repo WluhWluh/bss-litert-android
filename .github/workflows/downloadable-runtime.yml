@@ -143,4 +143,4 @@ jobs:
             --verify-tag \
             --prerelease \
             --title "Booming SS downloadable LiteRT 2.2 runtime experiment" \
-            --notes-file docs/downloadable-runtime-2.2.0-bss.1-exp.1.md
+            --notes-file docs/downloadable-runtime-2.2.0-bss.2-exp.1.md
