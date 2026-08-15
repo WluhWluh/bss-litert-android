@@ -1,0 +1,18 @@
+diff --git a/WORKSPACE b/WORKSPACE
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -6,6 +6,14 @@ workspace(name = "litert")
+ 
+ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+ 
++android_sdk_repository(
++    name = "androidsdk",
++    api_level = 35,
++    build_tools_version = "35.0.0",
++)
++
++register_toolchains("@androidsdk//:all")
++
+ # Darts Clone. Declare this before TensorFlow's workspace macros so they do not
+ # install their own incompatible BUILD overlay.
+ http_archive(

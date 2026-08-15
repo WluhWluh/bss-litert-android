@@ -1,0 +1,255 @@
+diff --git a/litert/kotlin/BUILD b/litert/kotlin/BUILD
+--- a/litert/kotlin/BUILD
++++ b/litert/kotlin/BUILD
+@@ -309,6 +309,26 @@ LITERT_KOTLIN_SRCS_ALL = [
+     "src/main/kotlin/com/google/ai/edge/litert/deployment/AiPackModelProvider.kt",
+ ]
+ 
++BSS_LITERT_DOWNLOADABLE_API_SRCS = [
++    "src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java",
++    "src/main/kotlin/com/google/ai/edge/litert/AcceleratorProvider.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Common.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Environment.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/LiteRtException.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/Model.kt",
++    "src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt",
++]
++
++# Core classes-only API used with a separately installed split LiteRT runtime.
++kt_android_library(
++    name = "litert_bss_downloadable_api",
++    srcs = BSS_LITERT_DOWNLOADABLE_API_SRCS,
++    exports_manifest = 1,
++    javacopts = ["--release 17"],
++    manifest = "src/downloadable/AndroidManifest.xml",
++    visibility = ["//visibility:public"],
++)
++
+ TFLITE_JAVA_DEPS = [
+     "@litert_maven//:com_google_guava_guava",
+     "@litert_maven//:androidx_lifecycle_lifecycle_common",
+@@ -333,5 +353,5 @@ kt_android_library(
+ # runtime), Compiled Model API only.
+ kt_android_library(
+     name = "litert_compiled_model_api_no_jni",
+-    srcs = LITERT_KOTLIN_SRCS_ALL,
++    srcs = LITERT_KOTLIN_SRCS_ALL + ["src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java"],
+     exports_manifest = 1,
+@@ -373,7 +393,7 @@ android_library(
+ # runtime), with both the Compiled Model API and also the older TFLite Interpreter API.
+ kt_android_library(
+     name = "litert_api_no_jni",
+-    srcs = LITERT_API_SRCS_ALL,
++    srcs = LITERT_API_SRCS_ALL + ["src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java"],
+     exports_manifest = 1,
+     javacopts = JAVACOPTS,
+     manifest = "src/main/AndroidManifest.xml",
+@@ -385,7 +405,7 @@ kt_android_library(
+ # This library is for building the Maven artifact only.
+ kt_android_library(
+     name = "litert_api_for_maven",
+-    srcs = LITERT_API_SRCS_ALL,
++    srcs = LITERT_API_SRCS_ALL + ["src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java"],
+     exports_manifest = 1,
+     javacopts = JAVACOPTS,
+     manifest = "src/main/AndroidManifest.xml",
+diff --git a/litert/kotlin/src/downloadable/AndroidManifest.xml b/litert/kotlin/src/downloadable/AndroidManifest.xml
+new file mode 100644
+--- /dev/null
++++ b/litert/kotlin/src/downloadable/AndroidManifest.xml
+@@ -0,0 +1,37 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright 2026 Booming SS contributors
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.google.ai.edge.litert">
++
++    <uses-sdk android:minSdkVersion="26" />
++
++    <application>
++        <uses-native-library
++            android:name="libOpenCL.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-car.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-pixel.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libvndksupport.so"
++            android:required="false" />
++    </application>
++
++</manifest>
+diff --git a/litert/kotlin/src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java b/litert/kotlin/src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java
+new file mode 100644
+--- /dev/null
++++ b/litert/kotlin/src/main/java/com/google/ai/edge/litert/LiteRtNativeLibraryLoader.java
+@@ -0,0 +1,117 @@
++/*
++ * Copyright 2026 Booming SS contributors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.google.ai.edge.litert;
++
++import java.io.File;
++import java.io.IOException;
++
++/** Configures and loads the split native libraries used by the LiteRT Kotlin API. */
++public final class LiteRtNativeLibraryLoader {
++  private static final String RUNTIME_LIBRARY_FILE_NAME = "libLiteRt.so";
++  private static final String JNI_LIBRARY_FILE_NAME = "liblitert_jni.so";
++  private static final String DEFAULT_JNI_LIBRARY_NAME = "litert_jni";
++  private static final Object LOCK = new Object();
++
++  private static volatile String configuredRuntimePath;
++  private static volatile boolean loaded;
++  private static volatile String loadedRuntimePath;
++  private static volatile String loadedJniPath;
++
++  private LiteRtNativeLibraryLoader() {}
++
++  /** Configures the absolute runtime path before any LiteRT API class is initialized. */
++  public static void configureAbsolutePath(String absolutePath) {
++    File file = new File(absolutePath);
++    if (!file.isAbsolute()) {
++      throw new IllegalArgumentException(
++          "LiteRT runtime library path must be absolute: " + absolutePath);
++    }
++    if (!RUNTIME_LIBRARY_FILE_NAME.equals(file.getName())) {
++      throw new IllegalArgumentException(
++          "LiteRT runtime library must be named " + RUNTIME_LIBRARY_FILE_NAME);
++    }
++    String normalizedPath = canonicalPath(file);
++
++    synchronized (LOCK) {
++      if (loaded) {
++        if (normalizedPath.equals(loadedRuntimePath)) {
++          return;
++        }
++        throw new IllegalStateException("LiteRT native libraries are already loaded");
++      }
++      if (configuredRuntimePath != null && !configuredRuntimePath.equals(normalizedPath)) {
++        throw new IllegalStateException(
++            "LiteRT runtime library path is already configured: " + configuredRuntimePath);
++      }
++      configuredRuntimePath = normalizedPath;
++    }
++  }
++
++  /** Loads the configured runtime then JNI library, or the packaged JNI library if unconfigured. */
++  public static void load() {
++    synchronized (LOCK) {
++      if (loaded) {
++        return;
++      }
++      String runtimePath = configuredRuntimePath;
++      if (runtimePath == null) {
++        System.loadLibrary(DEFAULT_JNI_LIBRARY_NAME);
++        loadedRuntimePath = null;
++        loadedJniPath = null;
++      } else {
++        String jniPath = siblingJniPath(runtimePath);
++        System.load(runtimePath);
++        System.load(jniPath);
++        loadedRuntimePath = runtimePath;
++        loadedJniPath = jniPath;
++      }
++      loaded = true;
++    }
++  }
++
++  /** Returns whether this API class loader has completed native-library loading. */
++  public static boolean isLoaded() {
++    return loaded;
++  }
++
++  /** Returns the configured canonical runtime path, or null for packaged-library fallback. */
++  public static String configuredAbsolutePath() {
++    return configuredRuntimePath;
++  }
++
++  /** Returns the derived canonical JNI path, or null for packaged-library fallback. */
++  public static String configuredJniAbsolutePath() {
++    String runtimePath = configuredRuntimePath;
++    return runtimePath == null ? null : siblingJniPath(runtimePath);
++  }
++
++  private static String siblingJniPath(String runtimePath) {
++    File parent = new File(runtimePath).getParentFile();
++    if (parent == null) {
++      throw new IllegalArgumentException("LiteRT runtime library has no parent directory");
++    }
++    return canonicalPath(new File(parent, JNI_LIBRARY_FILE_NAME));
++  }
++
++  private static String canonicalPath(File file) {
++    try {
++      return file.getCanonicalPath();
++    } catch (IOException error) {
++      throw new IllegalArgumentException("Unable to canonicalize LiteRT native library path", error);
++    }
++  }
++}
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Environment.kt
+@@ -59,7 +59,7 @@ class Environment private constructor(handle: Long) : JniHandle(handle) {
+     // LINT.ThenChange(../../../../../../../../../c/litert_environment_options.h)
+ 
+     init {
+-      System.loadLibrary("litert_jni")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     /**
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/Model.kt
+@@ -500,7 +500,7 @@ class CompiledModel
+ 
+   companion object {
+     init {
+-      System.loadLibrary("litert_jni")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     private fun createFromAsset(
+diff --git a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
+--- a/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
++++ b/litert/kotlin/src/main/kotlin/com/google/ai/edge/litert/TensorBuffer.kt
+@@ -97,7 +97,7 @@ class TensorBuffer internal constructor(handle: Long) : JniHandle(handle) {
+ 
+   companion object {
+     init {
+-      System.loadLibrary("litert_jni")
++      LiteRtNativeLibraryLoader.load()
+     }
+ 
+     @JvmStatic private external fun nativeWriteInt(handle: Long, data: IntArray)

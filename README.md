@@ -42,14 +42,26 @@ The experimental component contract is stored in
 Build it with:
 
 ```bash
+./scripts/build-downloadable-api.sh
 python3 scripts/build_downloadable_runtime_bundles.py
-python3 scripts/verify_downloadable_runtime_bundles.py
+python3 scripts/verify_downloadable_runtime_bundles.py \
+  --readelf "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
 ```
 
-The builder first verifies the immutable `runtime-v2.1.5-bss.2` source AAR,
-then writes a pure API AAR, four ABI-specific CPU ZIPs, the arm64 bounded-GPU
-ZIP, release index, and checksums under `dist/downloadable-runtime/`. No native
-binary is rebuilt or modified in this process.
+The API build applies a hash-locked patch series to LiteRT 2.2.0 and produces a
+classes-only AAR with an explicit split-library loader. The component builder
+then verifies the immutable `runtime-v2.2.0-bss.1` source AAR and writes four
+ABI-specific CPU ZIPs, the arm64 bounded-GPU ZIP, release index, and checksums
+under `dist/downloadable-runtime/`. No native binary is rebuilt or modified by
+the component builder.
+
+Each CPU component contains `libLiteRt.so` and `liblitert_jni.so`. Its manifest
+freezes their roles, hashes, ELF metadata, and load order. In explicit mode,
+`LiteRtNativeLibraryLoader.configureAbsolutePath(String)` receives the runtime
+path, derives the sibling JNI path, and loads runtime then JNI. The packaged-AAR
+fallback remains `System.loadLibrary("litert_jni")`. The bounded GPU component
+requires the exact arm64 runtime and custom JNI identities so it cannot be
+combined with an unpatched 2.2 JNI bridge.
 
 ## x86 supplement contents
 

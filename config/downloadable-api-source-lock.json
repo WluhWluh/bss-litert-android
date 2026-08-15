@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "liteRt": {
+    "repository": "https://github.com/google-ai-edge/LiteRT.git",
+    "commit": "145c7523ff08d5e57ab5c582141775eea47da9c7",
+    "version": "2.2.0"
+  },
+  "build": {
+    "bazelVersion": "7.7.0",
+    "bazelLinuxX86_64Sha256": "fe7e799cbc9140f986b063e06800a3d4c790525075c877d00a7112669824acbf",
+    "androidApiLevel": 35,
+    "androidBuildToolsVersion": "35.0.0",
+    "androidNdkVersion": "25.1.8937393",
+    "hermeticPythonVersion": "3.11",
+    "packagingPythonVersion": "3.12.3",
+    "packagingZlibVersion": "1.3",
+    "target": "//litert/kotlin:litert_bss_downloadable_api_kt"
+  },
+  "patchSeries": [
+    {
+      "file": "0001-explicit-split-native-loader.patch",
+      "sha256": "e9cb10bbeaa797af7f54266d99da9f0ba4ad5961aad6641a839bb86bb6453167"
+    },
+    {
+      "file": "0002-android-sdk-toolchain.patch",
+      "sha256": "4063b238bc1374d696297c0f5267151060840c55718d33b9c61220c72f00be24"
+    }
+  ],
+  "output": {
+    "classesJarByteSize": 89690,
+    "classesJarSha256": "b1d55472781bedb7f08bac108a1ee5cebe96c4663de36269d18b80f96d2ed1ff",
+    "jvmClassMajor": 52,
+    "baseAarFileName": "litert-api-2.2.0-bss.1-explicit-loader-base.aar",
+    "baseAarByteSize": 84348,
+    "baseAarSha256": "1542f1c632ee89c3a790382015995fd2b0d1a1295222bc62af8b37f76f8355a4"
+  },
+  "loaderApi": {
+    "className": "com.google.ai.edge.litert.LiteRtNativeLibraryLoader",
+    "configureMethod": "configureAbsolutePath(java.lang.String)",
+    "loadMethod": "load()",
+    "configuredJniMethod": "configuredJniAbsolutePath()",
+    "configurationPathRole": "runtime",
+    "runtimeFileName": "libLiteRt.so",
+    "jniFileName": "liblitert_jni.so",
+    "packagedFallbackLibraryName": "litert_jni",
+    "absolutePathLoadOrder": [
+      "libLiteRt.so",
+      "liblitert_jni.so"
+    ],
+    "routedClasses": [
+      "com.google.ai.edge.litert.Environment",
+      "com.google.ai.edge.litert.CompiledModel",
+      "com.google.ai.edge.litert.TensorBuffer"
+    ],
+    "forbiddenClassPrefixes": [
+      "com/google/ai/edge/litert/ModelProvider",
+      "com/google/ai/edge/litert/deployment/",
+      "org/tensorflow/lite/"
+    ]
+  }
+}

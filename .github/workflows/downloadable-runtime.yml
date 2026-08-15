@@ -18,7 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         replica: [a, b]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
@@ -27,7 +28,32 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: '3.12.3'
+
+      - name: Reclaim runner disk space
+        run: |
+          sudo rm -rf /opt/ghc /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install locked Android SDK components
+        run: |
+          source config/downloadable-api.env
+          yes | sdkmanager --licenses >/dev/null || test "${PIPESTATUS[1]}" -eq 0
+          sdkmanager \
+            "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
+            "ndk;${ANDROID_NDK_VERSION}" \
+            "platforms;android-${ANDROID_COMPILE_SDK}"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" \
+            >> "$GITHUB_ENV"
 
       - name: Validate release tag
         if: github.ref_type == 'tag'
@@ -38,10 +64,16 @@ jobs:
       - name: Run packaging tests
         run: python3 -m unittest discover -s tests
 
+      - name: Build source-patched explicit split-loader API
+        run: |
+          chmod +x scripts/build-downloadable-api.sh
+          ./scripts/build-downloadable-api.sh
+
       - name: Build and verify component bundles
         run: |
           python3 scripts/build_downloadable_runtime_bundles.py
-          python3 scripts/verify_downloadable_runtime_bundles.py
+          python3 scripts/verify_downloadable_runtime_bundles.py \
+            --readelf "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
 
       - name: Upload independent candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -53,7 +85,7 @@ jobs:
 
   compare-and-publish:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       id-token: write
@@ -91,6 +123,7 @@ jobs:
             candidates/a/*.zip
             candidates/a/downloadable-runtime-index.json
             candidates/a/downloadable-runtime-contract.json
+            candidates/a/downloadable-api-source-lock.json
 
       - name: Upload verified release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -109,5 +142,5 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --prerelease \
-            --title "Booming SS downloadable LiteRT runtime experiment" \
-            --notes-file docs/downloadable-runtime-2.1.5-bss.2-exp.1.md
+            --title "Booming SS downloadable LiteRT 2.2 runtime experiment" \
+            --notes-file docs/downloadable-runtime-2.2.0-bss.1-exp.1.md
