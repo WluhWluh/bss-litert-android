@@ -42,6 +42,16 @@ jobs:
           sudo rm -rf /usr/local/lib/android/sdk/ndk
           df -h /
 
+      - name: Install locked Android SDK components
+        run: |
+          source config/bounded-gpu-runtime.env
+          sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${sdkmanager}"
+          yes | "${sdkmanager}" --licenses >/dev/null || test "${PIPESTATUS[1]}" -eq 0
+          "${sdkmanager}" \
+            "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
+            "platforms;android-${ANDROID_COMPILE_SDK}"
+
       - name: Run packaging and policy tests
         run: python3 -m unittest discover -s tests
 
@@ -123,5 +133,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME" candidates/a/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "Booming SS LiteRT 2.1.5 bounded GPU runtime" \
-            --notes-file docs/bounded-gpu-runtime-2.1.5-bss.2.md
+            --title "Booming SS LiteRT 2.2.0 bounded GPU runtime" \
+            --notes-file docs/bounded-gpu-runtime-2.2.0-bss.1.md

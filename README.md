@@ -3,7 +3,7 @@
 This repository produces unofficial Android LiteRT runtimes used by Booming
 SS. It currently maintains two release tracks and one loading experiment:
 
-- an x86-only CPU supplement for the official LiteRT 2.1.5 AAR;
+- an x86-only CPU/JNI supplement for the official LiteRT 2.2.0 AAR pair;
 - a GitHub-only multi-ABI AAR whose arm64 GPU path uses the fixed
   `gpu-opencl-bounded-fp32-v1` profile.
 - downloadable CPU-core and bounded-GPU component bundles derived byte-for-byte
@@ -14,13 +14,14 @@ project. It contains no music source-separation model weights.
 
 ## Bounded GPU runtime
 
-`io.github.wluhwluh.bss:litert-android:2.1.5-bss.2` is a complete replacement
-for the official LiteRT AAR in Booming SS GitHub builds. Its native matrix is:
+`io.github.wluhwluh.bss:litert-android:2.2.0-bss.1` deterministically combines
+the official LiteRT implementation/API AAR pair for Booming SS GitHub builds.
+Its native matrix is:
 
-- `arm64-v8a`: CPU runtime, GPU accelerator, and fixed N=1 OpenCL shim;
-- `armeabi-v7a`: CPU runtime;
-- `x86_64`: CPU runtime;
-- `x86`: CPU runtime from the source-built `v2.1.5-bss.1` release.
+- `arm64-v8a`: CPU runtime, JNI bridge, GPU accelerator, and fixed N=1 OpenCL shim;
+- `armeabi-v7a`: CPU runtime and JNI bridge;
+- `x86_64`: CPU runtime and JNI bridge;
+- `x86`: source-built CPU runtime and JNI bridge from `v2.2.0-bss.1`.
 
 The runtime contract is stored in
 [`contracts/bounded-gpu-runtime-contract.json`](contracts/bounded-gpu-runtime-contract.json).
@@ -32,7 +33,7 @@ Build it on Linux or WSL with:
 
 Outputs are written to `dist/bounded-gpu-runtime/`. The dedicated workflow
 builds the candidate on two clean runners and publishes only byte-identical
-outputs from a tag such as `runtime-v2.1.5-bss.2`.
+outputs from a tag such as `runtime-v2.2.0-bss.1`.
 
 ## Downloadable runtime experiment
 
@@ -54,23 +55,26 @@ binary is rebuilt or modified in this process.
 
 Each release publishes:
 
-- A canonical `libLiteRt-<version>-android-x86.so` binary.
-- A native-only convenience AAR with `jni/x86/libLiteRt.so`.
+- Canonical `libLiteRt-<version>-android-x86.so` and
+  `liblitert_jni-<version>-android-x86.so` binaries.
+- A native-only convenience AAR containing both x86 libraries.
 - SHA-256 checksums and a machine-readable build manifest.
 - LiteRT and resolved third-party license files.
 - Build logs, GitHub build provenance, and x86 validation reports.
 
 The binary must be paired with the exact official Java/Kotlin API version
-recorded in `build-manifest.json`. For `2.1.5-bss.1` that dependency is:
+recorded in `build-manifest.json`. For `2.2.0-bss.1`, `litert` brings the
+matching `litert-api` dependency:
 
 ```kotlin
-implementation("com.google.ai.edge.litert:litert:2.1.5")
+implementation("com.google.ai.edge.litert:litert:2.2.0")
 ```
 
 For a single Android app, consume the canonical binary directly:
 
 ```text
 app/src/main/jniLibs/x86/libLiteRt.so
+app/src/main/jniLibs/x86/liblitert_jni.so
 ```
 
 Do not add `pickFirst` for this library. A duplicate x86 runtime after a future
@@ -80,8 +84,8 @@ official LiteRT upgrade should fail the build and force an explicit review.
 
 The build is pinned in `config/release.env` and currently uses:
 
-- LiteRT `v2.1.5` at commit
-  `9d26e89d88ef8785b6a1e54ec41ac8add215a125`.
+- LiteRT `v2.2.0` at commit
+  `145c7523ff08d5e57ab5c582141775eea47da9c7`.
 - Bazel `7.7.0`.
 - Android NDK r25b (`25.1.8937393`).
 - `rules_android_ndk` `0.1.3`.
@@ -102,17 +106,17 @@ through `BAZEL` and `ANDROID_NDK_HOME`. Artifacts are written to `dist/`.
 Push a tag matching the version file to build and publish a release:
 
 ```bash
-git tag v2.1.5-bss.1
-git push origin v2.1.5-bss.1
+git tag v2.2.0-bss.1
+git push origin v2.2.0-bss.1
 ```
 
 The release workflow builds from source, verifies the ELF architecture,
 dynamic dependencies, and JNI exports, runs a small model on an API 26 pure x86
 emulator, generates provenance, and publishes the resulting assets.
 
-Full 9662 and KARA validation for the first release is recorded in
-`docs/uvr-validation-2.1.5-bss.1.md`. Automated UVR smoke will be enabled after
-the model repository publishes immutable release URLs and hashes.
+The v2.2 release does not inherit the old v2.1.5 UVR evidence. Its current x86
+contract is the API 26 pure-x86 inference test documented in
+`docs/x86-validation-2.2.0-bss.1.md`.
 
 ## Complete runtime roadmap
 

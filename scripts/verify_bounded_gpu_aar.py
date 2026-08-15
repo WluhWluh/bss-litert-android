@@ -7,6 +7,8 @@ import argparse
 import hashlib
 import io
 import json
+import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -48,11 +50,37 @@ def verify_normalized(infos: list[zipfile.ZipInfo], label: str) -> None:
             raise ValueError(f"{label} mode is not normalized: {info.filename}")
 
 
+def verify_arm64_page_alignment(
+    entries: dict[str, bytes], readelf: Path
+) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        for name, data in entries.items():
+            if not name.startswith("jni/arm64-v8a/") or not name.endswith(".so"):
+                continue
+            library = root / Path(name).name
+            library.write_bytes(data)
+            result = subprocess.run(
+                [str(readelf), "-lW", str(library)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            alignments = [
+                int(line.split()[-1], 16)
+                for line in result.stdout.splitlines()
+                if line.lstrip().startswith("LOAD ")
+            ]
+            if not alignments or min(alignments) < 0x4000:
+                raise ValueError(f"Arm64 LOAD alignment is below 16 KiB: {name}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--aar", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--contract", type=Path, required=True)
+    parser.add_argument("--readelf", type=Path)
     args = parser.parse_args()
 
     aar_bytes = args.aar.read_bytes()
@@ -68,32 +96,40 @@ def main() -> None:
     expected_native = expected_native_entries(contract)
     if actual_native != expected_native:
         raise ValueError("AAR native matrix differs from the runtime contract")
-    if "jni/x86_64/libLiteRtClGlAccelerator.so" in entries:
-        raise ValueError("The unbounded x86_64 GPU accelerator must not be packaged")
+    for abi in ("armeabi-v7a", "x86_64", "x86"):
+        if f"jni/{abi}/libLiteRtClGlAccelerator.so" in entries:
+            raise ValueError(f"The unbounded {abi} GPU accelerator must not be packaged")
     if any(name.endswith("libOCLQ.so") for name in entries):
         raise ValueError("The diagnostic OpenCL shim must not be packaged")
 
     classes, class_infos = archive_entries(entries["classes.jar"])
     verify_normalized(class_infos, "classes.jar")
-    expected_classes = {
+    required_classes = {
         f"{CAPABILITY_CLASS_PREFIX}.class",
         f"{CAPABILITY_CLASS_PREFIX}$Capability.class",
+        "com/google/ai/edge/litert/CompiledModel.class",
+        "com/google/ai/edge/litert/Environment.class",
+        "org/tensorflow/lite/Interpreter.class",
     }
-    if not expected_classes.issubset(classes):
-        raise ValueError("The stable bounded-runtime capability API is missing")
+    missing_classes = required_classes - set(classes)
+    if missing_classes:
+        raise ValueError(f"Combined LiteRT class set is incomplete: {missing_classes}")
 
     accelerator = entries["jni/arm64-v8a/libLiteRtClGlAccelerator.so"]
     if accelerator.count(b"libBssOcl.so") != 1 or b"libOpenCL.so" in accelerator:
         raise ValueError("The arm64 accelerator does not use the bounded shim")
     shim = entries["jni/arm64-v8a/libBssOcl.so"]
     for marker in (
-        b"2.1.5-bss.2",
-        b"gpu-opencl-bounded-fp32-v1",
+        contract["capability"]["artifactVersion"].encode(),
+        contract["capability"]["profileId"].encode(),
         b"nativeGetCapabilitySchemaVersion",
         b"nativeGetEventWaitCount",
     ):
         if marker not in shim:
             raise ValueError(f"Bounded shim marker is missing: {marker!r}")
+    custom_jni = entries["jni/arm64-v8a/liblitert_jni.so"]
+    if b"Failed to set Booming SS bounded GPU kernelBatchSize." not in custom_jni:
+        raise ValueError("The source-built bounded GPU JNI marker is missing")
 
     if manifest["coordinate"] != contract["coordinate"]:
         raise ValueError("Build manifest coordinate differs from the contract")
@@ -103,10 +139,15 @@ def main() -> None:
         raise ValueError("Build manifest AAR hash is incorrect")
     if manifest["capability"] != contract["capability"]:
         raise ValueError("Build manifest capability differs from the contract")
+    if manifest["sourceBuild"]["outputSha256"] != sha256(custom_jni):
+        raise ValueError("Source-built JNI hash is incorrect")
     for name in expected_native:
         component = manifest["nativeComponents"].get(name)
         if component is None or component["sha256"] != sha256(entries[name]):
             raise ValueError(f"Native component hash is incorrect: {name}")
+
+    if args.readelf is not None:
+        verify_arm64_page_alignment(entries, args.readelf)
 
     print(f"Verified {contract['coordinate']}")
     print(f"AAR SHA-256: {sha256(aar_bytes)}")

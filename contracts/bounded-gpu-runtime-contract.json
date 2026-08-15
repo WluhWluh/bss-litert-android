@@ -1,11 +1,11 @@
 {
-  "schemaVersion": "bss-litert-bounded-gpu-runtime-v1",
-  "coordinate": "io.github.wluhwluh.bss:litert-android:2.1.5-bss.2",
-  "baseLiteRtVersion": "2.1.5",
+  "schemaVersion": "bss-litert-bounded-gpu-runtime-v2",
+  "coordinate": "io.github.wluhwluh.bss:litert-android:2.2.0-bss.1",
+  "baseLiteRtVersion": "2.2.0",
   "androidMinApi": 26,
   "capability": {
     "schemaVersion": 1,
-    "artifactVersion": "2.1.5-bss.2",
+    "artifactVersion": "2.2.0-bss.1",
     "profileId": "gpu-opencl-bounded-fp32-v1",
     "precision": "FP32",
     "backend": "OpenCL",
@@ -15,23 +15,32 @@
   "nativeMatrix": {
     "arm64-v8a": [
       "libLiteRt.so",
+      "liblitert_jni.so",
       "libLiteRtClGlAccelerator.so",
       "libBssOcl.so"
     ],
     "armeabi-v7a": [
-      "libLiteRt.so"
+      "libLiteRt.so",
+      "liblitert_jni.so"
     ],
     "x86_64": [
-      "libLiteRt.so"
+      "libLiteRt.so",
+      "liblitert_jni.so"
     ],
     "x86": [
-      "libLiteRt.so"
+      "libLiteRt.so",
+      "liblitert_jni.so"
     ]
   },
   "gpuEligibleAbis": [
     "arm64-v8a"
   ],
   "removedOfficialComponents": [
+    "jni/armeabi-v7a/libLiteRtClGlAccelerator.so",
     "jni/x86_64/libLiteRtClGlAccelerator.so"
+  ],
+  "combinedAarInputs": [
+    "com.google.ai.edge.litert:litert:2.2.0",
+    "com.google.ai.edge.litert:litert-api:2.2.0"
   ]
 }

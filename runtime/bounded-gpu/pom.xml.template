@@ -8,7 +8,7 @@
   <version>@ARTIFACT_VERSION@</version>
   <packaging>aar</packaging>
   <name>Booming SS LiteRT Android runtime</name>
-  <description>LiteRT 2.1.5 Android runtime with a fixed bounded OpenCL profile and CPU support for four ABIs.</description>
+  <description>LiteRT 2.2.0 Android runtime with a fixed bounded OpenCL profile and CPU support for four ABIs.</description>
   <url>https://github.com/WluhWluh/bss-litert-android</url>
   <licenses>
     <license>

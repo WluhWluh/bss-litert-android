@@ -1,0 +1,19 @@
+diff --git a/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc b/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
+--- a/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
++++ b/litert/kotlin/src/main/jni/litert_compiled_model_jni.cc
+@@ -349,12 +349,12 @@ Expected<void> PopulateGpuOptions(JNIEnv* env, GpuOptions& gpu_options,
+             ToGpuOptionsPriority(gpu_options_values_vector[i])));
+         break;
+       case GpuOptionsKey::kNumStepsOfCommandBufferPreparations:
+-        status = gpu_options.SetNumStepsOfCommandBufferPreparations(
++        status = gpu_options.SetKernelBatchSize(
+             std::stoi(gpu_options_values_vector[i]));
+         if (status != kLiteRtStatusOk) {
+           return Unexpected(status,
+-                            "Failed to set GPU options "
+-                            "numStepsOfCommandBufferPreparations.");
++                            "Failed to set Booming SS bounded GPU "
++                            "kernelBatchSize.");
+         }
+         break;
+       default:
