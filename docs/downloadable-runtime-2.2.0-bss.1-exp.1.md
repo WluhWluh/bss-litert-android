@@ -72,3 +72,27 @@ The candidate contains the classes-only loader AAR, four split CPU components,
 one arm64 bounded GPU component, the v3 downloadable contract, v2 release
 index, API source lock, checksums, LiteRT license, and third-party notices. It
 contains no model weights and remains a GitHub-only experimental channel.
+
+The locally reproduced pinned-Linux candidate identities are:
+
+- API AAR: `a08ce2e2db55c15679adcd81ad83d90f8e907aa271fa80db6a74513aca1ff1e3`;
+- arm64 CPU ZIP: `2ef97a9eb6bdbcd86c213f6a4144baef919a756dc54c628d5ed00b9cf451153c`;
+- arm32 CPU ZIP: `38ebd334065e6e139c8bc19ceded9553503f3b8dbd05bfaaf615a83adb87a045`;
+- x86_64 CPU ZIP: `30a63e2eaa3c5acf1c83eeda9c5931849c28750f6aadb8512edbdf574b890661`;
+- x86 CPU ZIP: `a2ce899610d67914b62c2f20db6d6cef5d282d5607845ac51ec5231aba524b56`;
+- arm64 bounded GPU ZIP:
+  `8a3f743e6ea4c6bc4739b5927e6d3b711a87e57be4bc06077aee5e8f19e621b8`.
+
+These identities were reproduced from two independent source compilations and
+two release assembly directories using the pinned Python/zlib environment.
+They are local candidate evidence, not a statement that the GitHub prerelease
+has been published.
+
+## Remaining device gate
+
+The existing LiteRT 2.2 combined AAR has passed API 26 x86 inference, but that
+does not prove the new app-private downloadable path. Before publication or
+product rollout, Booming SS must install the v3 x86 CPU ZIP into app-private
+storage, configure its runtime path, observe runtime-then-JNI loading, and run
+an inference on the API 26 x86 AVD. Equivalent arm32 and arm64 CPU loading must
+then be exercised on the S10; bounded GPU remains an arm64-only follow-on gate.

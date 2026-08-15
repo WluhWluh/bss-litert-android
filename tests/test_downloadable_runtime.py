@@ -108,6 +108,48 @@ class DownloadableRuntimeTest(unittest.TestCase):
             loader["absolutePathLoadOrder"],
         )
 
+    def test_environment_files_agree_with_contract_and_source_lock(self) -> None:
+        def read_env(name: str) -> dict[str, str]:
+            values = {}
+            for line in (REPO_ROOT / name).read_text(encoding="utf-8").splitlines():
+                if line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    values[key] = value
+            return values
+
+        runtime_env = read_env("config/downloadable-runtime.env")
+        api_env = read_env("config/downloadable-api.env")
+        source_lock = json.loads(
+            (REPO_ROOT / "config/downloadable-api-source-lock.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            self.contract["runtimeArtifactVersion"],
+            runtime_env["RUNTIME_ARTIFACT_VERSION"],
+        )
+        self.assertEqual(
+            self.contract["releaseVersion"],
+            runtime_env["DOWNLOADABLE_RELEASE_VERSION"],
+        )
+        self.assertEqual(
+            self.contract["releaseTag"],
+            runtime_env["DOWNLOADABLE_RELEASE_TAG"],
+        )
+        self.assertEqual(self.contract["sourceAar"]["url"], runtime_env["SOURCE_AAR_URL"])
+        self.assertEqual(
+            self.contract["sourceAar"]["sha256"], runtime_env["SOURCE_AAR_SHA256"]
+        )
+        self.assertEqual(source_lock["liteRt"]["commit"], api_env["LITERT_COMMIT"])
+        self.assertEqual(
+            source_lock["build"]["packagingPythonVersion"],
+            api_env["PACKAGING_PYTHON_VERSION"],
+        )
+        self.assertEqual(
+            source_lock["build"]["packagingZlibVersion"],
+            api_env["PACKAGING_ZLIB_VERSION"],
+        )
+
     def test_explicit_loader_source_patch_series_and_output_are_frozen(self) -> None:
         lock_path = REPO_ROOT / "config/downloadable-api-source-lock.json"
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
