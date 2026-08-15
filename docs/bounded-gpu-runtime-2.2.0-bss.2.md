@@ -39,3 +39,6 @@ runtime contract, build manifest, licenses, checksums, and GitHub provenance.
 Two clean runners must produce byte-identical outputs. Before the release tag
 is created, the exact candidate AAR must also pass ARM64 capability, two-cold-run
 `dispatch == wait > 0`, repeatability, and ORT numerical-parity validation.
+That exact-candidate validation, including the runtime/APK identities and
+host-side element-wise tensor comparison, is recorded in
+`bounded-gpu-runtime-2.2.0-bss.2-device-validation.md`.
