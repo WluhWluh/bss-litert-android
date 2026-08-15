@@ -16,7 +16,8 @@ FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--shared-library", type=Path, required=True)
+    parser.add_argument("--runtime-library", type=Path, required=True)
+    parser.add_argument("--jni-library", type=Path, required=True)
     parser.add_argument("--source-license", type=Path, required=True)
     parser.add_argument("--third-party-licenses", type=Path, required=True)
     parser.add_argument("--notices", type=Path, required=True)
@@ -52,17 +53,21 @@ def main() -> int:
     dist_dir = args.dist_dir.resolve()
     dist_dir.mkdir(parents=True, exist_ok=True)
 
-    binary_name = f"libLiteRt-{args.artifact_version}-android-x86.so"
+    runtime_name = f"libLiteRt-{args.artifact_version}-android-x86.so"
+    jni_name = f"liblitert_jni-{args.artifact_version}-android-x86.so"
     aar_name = f"litert-{args.artifact_version}-android-x86.aar"
-    binary_path = dist_dir / binary_name
+    runtime_path = dist_dir / runtime_name
+    jni_path = dist_dir / jni_name
     aar_path = dist_dir / aar_name
     source_license_path = dist_dir / "LICENSE-LiteRT.txt"
     third_party_path = dist_dir / "THIRD_PARTY_LICENSES.txt"
     notices_path = dist_dir / "THIRD_PARTY_NOTICES.md"
     validation_path = dist_dir / args.validation_report.name
 
-    if args.shared_library.resolve() != binary_path:
-        shutil.copyfile(args.shared_library, binary_path)
+    if args.runtime_library.resolve() != runtime_path:
+        shutil.copyfile(args.runtime_library, runtime_path)
+    if args.jni_library.resolve() != jni_path:
+        shutil.copyfile(args.jni_library, jni_path)
     shutil.copyfile(args.source_license, source_license_path)
     shutil.copyfile(args.third_party_licenses, third_party_path)
     shutil.copyfile(args.notices, notices_path)
@@ -78,7 +83,8 @@ def main() -> int:
         write_zip_entry(archive, "LICENSE", source_license_path.read_bytes())
         write_zip_entry(archive, "THIRD_PARTY_LICENSES.txt", third_party_path.read_bytes())
         write_zip_entry(archive, "THIRD_PARTY_NOTICES.md", notices_path.read_bytes())
-        write_zip_entry(archive, "jni/x86/libLiteRt.so", binary_path.read_bytes())
+        write_zip_entry(archive, "jni/x86/libLiteRt.so", runtime_path.read_bytes())
+        write_zip_entry(archive, "jni/x86/liblitert_jni.so", jni_path.read_bytes())
 
     manifest_path = dist_dir / "build-manifest.json"
     build_manifest = {
@@ -96,7 +102,7 @@ def main() -> int:
             "rulesAndroidNdk": "0.1.3",
         },
         "build": {
-            "target": "//litert/kotlin:LiteRt",
+            "targets": ["//litert/kotlin:LiteRt", "//litert/kotlin:litert_jni"],
             "abi": "x86",
             "buildInclude": "cpu_only",
             "disabledXnnpackMicrokernels": [
@@ -107,16 +113,26 @@ def main() -> int:
             ],
         },
         "outputs": {
-            binary_name: {"bytes": binary_path.stat().st_size, "sha256": sha256(binary_path)},
+            runtime_name: {
+                "bytes": runtime_path.stat().st_size,
+                "sha256": sha256(runtime_path),
+            },
+            jni_name: {
+                "bytes": jni_path.stat().st_size,
+                "sha256": sha256(jni_path),
+            },
             aar_name: {"bytes": aar_path.stat().st_size, "sha256": sha256(aar_path)},
         },
-        "expectedDynamicDependencies": [
-            "libandroid.so",
-            "libc.so",
-            "libdl.so",
-            "liblog.so",
-            "libm.so",
-        ],
+        "nativeLibraries": {
+            "libLiteRt.so": {
+                "role": "LiteRT implementation and C runtime",
+                "sourceTarget": "//litert/kotlin:LiteRt",
+            },
+            "liblitert_jni.so": {
+                "role": "LiteRT Kotlin API JNI bridge",
+                "sourceTarget": "//litert/kotlin:litert_jni",
+            },
+        },
     }
     manifest_path.write_text(
         json.dumps(build_manifest, indent=2, sort_keys=True) + "\n",

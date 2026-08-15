@@ -59,6 +59,8 @@ jobs:
           mkdir -p smoke/app/src/androidTest/assets
           cp "dist/libLiteRt-${ARTIFACT_VERSION}-android-x86.so" \
             smoke/app/src/main/jniLibs/x86/libLiteRt.so
+          cp "dist/liblitert_jni-${ARTIFACT_VERSION}-android-x86.so" \
+            smoke/app/src/main/jniLibs/x86/liblitert_jni.so
           cp .work/litert-src/litert/test/testdata/simple_add_dynamic_shape.tflite \
             smoke/app/src/androidTest/assets/simple_add_dynamic_shape.tflite
           chmod +x smoke/gradlew

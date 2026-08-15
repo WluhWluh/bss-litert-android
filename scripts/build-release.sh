@@ -82,18 +82,6 @@ find "${source_dir}" -type f \
        -o -name WORKSPACE -o -name 'WORKSPACE.*' -o -name '*.sh' \) \
     -exec sed -i 's/\r$//' {} +
 
-patch_file="${repo_root}/patches/litert-2.1.5-x86.patch"
-if patch --force --reverse --dry-run --silent -d "${source_dir}" -p1 \
-    < "${patch_file}" >/dev/null 2>&1; then
-    :
-elif patch --force --dry-run --silent -d "${source_dir}" -p1 \
-    < "${patch_file}" >/dev/null 2>&1; then
-    patch --force --silent -d "${source_dir}" -p1 < "${patch_file}"
-else
-    echo "LiteRT source does not match the expected patch state." >&2
-    exit 1
-fi
-
 android_home="${work_dir}/android-sdk"
 mkdir -p "${android_home}"
 export ANDROID_HOME="${android_home}"
@@ -114,12 +102,19 @@ cd "${source_dir}"
     --define=xnn_enable_avx512fp16=false \
     --define=xnn_enable_avx512amx=false \
     --jobs="${jobs}" \
-    //litert/kotlin:LiteRt
+    //litert/kotlin:LiteRt \
+    //litert/kotlin:litert_jni
 
-built_so="$(readlink -f bazel-bin/litert/kotlin/libLiteRt.so)"
-binary_name="libLiteRt-${ARTIFACT_VERSION}-android-x86.so"
-install -m 0644 "${built_so}" "${dist_dir}/${binary_name}"
-"${repo_root}/scripts/verify-elf.sh" "${dist_dir}/${binary_name}" "${ndk_dir}"
+runtime_so="$(readlink -f bazel-bin/litert/kotlin/libLiteRt.so)"
+jni_so="$(readlink -f bazel-bin/litert/kotlin/liblitert_jni.so)"
+runtime_name="libLiteRt-${ARTIFACT_VERSION}-android-x86.so"
+jni_name="liblitert_jni-${ARTIFACT_VERSION}-android-x86.so"
+install -m 0644 "${runtime_so}" "${dist_dir}/${runtime_name}"
+install -m 0644 "${jni_so}" "${dist_dir}/${jni_name}"
+"${repo_root}/scripts/verify-elf.sh" \
+    "${dist_dir}/${runtime_name}" \
+    "${dist_dir}/${jni_name}" \
+    "${ndk_dir}"
 
 output_base="$(
     "${bazel_bin}" --output_user_root="${output_user_root}" info output_base
@@ -129,11 +124,12 @@ python3 "${repo_root}/scripts/collect_licenses.py" \
     --output "${work_dir}/THIRD_PARTY_LICENSES.txt"
 
 python3 "${repo_root}/scripts/package_release.py" \
-    --shared-library "${dist_dir}/${binary_name}" \
+    --runtime-library "${dist_dir}/${runtime_name}" \
+    --jni-library "${dist_dir}/${jni_name}" \
     --source-license "${source_dir}/LICENSE" \
     --third-party-licenses "${work_dir}/THIRD_PARTY_LICENSES.txt" \
     --notices "${repo_root}/THIRD_PARTY_NOTICES.md" \
-    --validation-report "${repo_root}/docs/uvr-validation-2.1.5-bss.1.md" \
+    --validation-report "${repo_root}/docs/x86-validation-2.2.0-bss.1.md" \
     --dist-dir "${dist_dir}" \
     --artifact-version "${ARTIFACT_VERSION}" \
     --litert-version "${LITERT_VERSION}" \
