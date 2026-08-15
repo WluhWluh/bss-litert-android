@@ -50,7 +50,7 @@ python3 scripts/verify_downloadable_runtime_bundles.py \
 
 The API build applies a hash-locked patch series to LiteRT 2.2.0 and produces a
 classes-only AAR with an explicit split-library loader. The component builder
-then verifies the immutable `runtime-v2.2.0-bss.1` source AAR and writes four
+then verifies the immutable `runtime-v2.2.0-bss.2` source AAR and writes four
 ABI-specific CPU ZIPs, the arm64 bounded-GPU ZIP, release index, and checksums
 under `dist/downloadable-runtime/`. No native binary is rebuilt or modified by
 the component builder.
@@ -62,6 +62,10 @@ path, derives the sibling JNI path, and loads runtime then JNI. The packaged-AAR
 fallback remains `System.loadLibrary("litert_jni")`. The bounded GPU component
 requires the exact arm64 runtime and custom JNI identities so it cannot be
 combined with an unpatched 2.2 JNI bridge.
+
+The x86 component is sourced only from `v2.2.0-bss.2`; both native SONAMEs
+match `libLiteRt.so` and `liblitert_jni.so`, which is required for the
+app-private absolute-path loader contract.
 
 ## x86 supplement contents
 
