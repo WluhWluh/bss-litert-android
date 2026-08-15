@@ -16,16 +16,21 @@ jobs:
     timeout-minutes: 120
     env:
       BAZEL_JOBS: 4
-      BSS_COMPLETE_CACHE_DIR: ${{ runner.temp }}/complete-runtime-cache
-      FIRST_WORK_DIR: ${{ runner.temp }}/complete-runtime-work-first
-      FIRST_DIST_DIR: ${{ runner.temp }}/complete-runtime-dist-first
-      SECOND_WORK_DIR: ${{ runner.temp }}/complete-runtime-work-second
-      SECOND_DIST_DIR: ${{ runner.temp }}/complete-runtime-dist-second
-      REPRODUCIBILITY_DIR: ${{ runner.temp }}/complete-runtime-reproducibility
 
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Configure temporary directories
+        run: |
+          {
+            echo "BSS_COMPLETE_CACHE_DIR=${RUNNER_TEMP}/complete-runtime-cache"
+            echo "FIRST_WORK_DIR=${RUNNER_TEMP}/complete-runtime-work-first"
+            echo "FIRST_DIST_DIR=${RUNNER_TEMP}/complete-runtime-dist-first"
+            echo "SECOND_WORK_DIR=${RUNNER_TEMP}/complete-runtime-work-second"
+            echo "SECOND_DIST_DIR=${RUNNER_TEMP}/complete-runtime-dist-second"
+            echo "REPRODUCIBILITY_DIR=${RUNNER_TEMP}/complete-runtime-reproducibility"
+          } >> "$GITHUB_ENV"
 
       - name: Reclaim runner disk space
         run: |
