@@ -63,7 +63,7 @@ Each release publishes:
 - Build logs, GitHub build provenance, and x86 validation reports.
 
 The binary must be paired with the exact official Java/Kotlin API version
-recorded in `build-manifest.json`. For `2.2.0-bss.1`, `litert` brings the
+recorded in `build-manifest.json`. For `2.2.0-bss.2`, `litert` brings the
 matching `litert-api` dependency:
 
 ```kotlin
@@ -89,7 +89,7 @@ The build is pinned in `config/release.env` and currently uses:
 - Bazel `7.7.0`.
 - Android NDK r25b (`25.1.8937393`).
 - `rules_android_ndk` `0.1.3`.
-- Android API level 23 and the x86 ABI.
+- Android API level 26 and the x86 ABI.
 - LiteRT's `cpu_only` build configuration.
 
 On Ubuntu or WSL:
@@ -106,17 +106,18 @@ through `BAZEL` and `ANDROID_NDK_HOME`. Artifacts are written to `dist/`.
 Push a tag matching the version file to build and publish a release:
 
 ```bash
-git tag v2.2.0-bss.1
-git push origin v2.2.0-bss.1
+git tag v2.2.0-bss.2
+git push origin v2.2.0-bss.2
 ```
 
 The release workflow builds from source, verifies the ELF architecture,
 dynamic dependencies, and JNI exports, runs a small model on an API 26 pure x86
-emulator, generates provenance, and publishes the resulting assets.
+emulator in both APK-packaged and app-private explicit-path layouts, generates
+provenance, and publishes the resulting assets.
 
 The v2.2 release does not inherit the old v2.1.5 UVR evidence. Its current x86
 contract is the API 26 pure-x86 inference test documented in
-`docs/x86-validation-2.2.0-bss.1.md`.
+`docs/x86-validation-2.2.0-bss.2.md`.
 
 ## Complete runtime roadmap
 

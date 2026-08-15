@@ -24,6 +24,10 @@ import org.junit.runner.RunWith;
 public final class LiteRtX86SmokeTest {
     @Test
     public void runsAddModelWithCpuAccelerator() throws Exception {
+        runAddModelWithCpuAccelerator();
+    }
+
+    static void runAddModelWithCpuAccelerator() throws Exception {
         assertEquals("x86", Build.SUPPORTED_ABIS[0]);
 
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
