@@ -37,8 +37,10 @@ jobs:
       - name: Install locked Android SDK components
         run: |
           source config/release.env
-          yes | sdkmanager --licenses >/dev/null || test "${PIPESTATUS[1]}" -eq 0
-          sdkmanager \
+          sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${sdkmanager}"
+          yes | "${sdkmanager}" --licenses >/dev/null || test "${PIPESTATUS[1]}" -eq 0
+          "${sdkmanager}" \
             "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
             "platforms;android-${ANDROID_COMPILE_SDK}"
 
