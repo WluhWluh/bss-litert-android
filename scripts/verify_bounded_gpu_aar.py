@@ -75,6 +75,57 @@ def verify_arm64_page_alignment(
                 raise ValueError(f"Arm64 LOAD alignment is below 16 KiB: {name}")
 
 
+def verify_x86_native_contract(
+    entries: dict[str, bytes], readelf: Path, android_min_api: int
+) -> None:
+    expected_sonames = {
+        "jni/x86/libLiteRt.so": "libLiteRt.so",
+        "jni/x86/liblitert_jni.so": "liblitert_jni.so",
+    }
+    expected_api_bytes = f"{android_min_api:02x} 00 00 00"
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        for name, expected_soname in expected_sonames.items():
+            library = root / Path(name).name
+            library.write_bytes(entries[name])
+            dynamic = subprocess.run(
+                [str(readelf), "-d", str(library)],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            if f"Library soname: [{expected_soname}]" not in dynamic:
+                raise ValueError(f"Unexpected x86 SONAME: {name}")
+
+            program_headers = subprocess.run(
+                [str(readelf), "-lW", str(library)],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            alignments = [
+                int(line.split()[-1], 16)
+                for line in program_headers.splitlines()
+                if line.lstrip().startswith("LOAD ")
+            ]
+            if not alignments or min(alignments) < 0x4000:
+                raise ValueError(f"x86 LOAD alignment is below 16 KiB: {name}")
+
+            notes = subprocess.run(
+                [str(readelf), "--notes", str(library)],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            if (
+                ".note.android.ident" not in notes
+                or f"description data: {expected_api_bytes}" not in notes
+            ):
+                raise ValueError(
+                    f"x86 Android API note is not {android_min_api}: {name}"
+                )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--aar", type=Path, required=True)
@@ -148,6 +199,9 @@ def main() -> None:
 
     if args.readelf is not None:
         verify_arm64_page_alignment(entries, args.readelf)
+        verify_x86_native_contract(
+            entries, args.readelf, contract["androidMinApi"]
+        )
 
     print(f"Verified {contract['coordinate']}")
     print(f"AAR SHA-256: {sha256(aar_bytes)}")

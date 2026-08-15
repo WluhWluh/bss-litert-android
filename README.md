@@ -14,14 +14,14 @@ project. It contains no music source-separation model weights.
 
 ## Bounded GPU runtime
 
-`io.github.wluhwluh.bss:litert-android:2.2.0-bss.1` deterministically combines
+`io.github.wluhwluh.bss:litert-android:2.2.0-bss.2` deterministically combines
 the official LiteRT implementation/API AAR pair for Booming SS GitHub builds.
 Its native matrix is:
 
 - `arm64-v8a`: CPU runtime, JNI bridge, GPU accelerator, and fixed N=1 OpenCL shim;
 - `armeabi-v7a`: CPU runtime and JNI bridge;
 - `x86_64`: CPU runtime and JNI bridge;
-- `x86`: source-built CPU runtime and JNI bridge from `v2.2.0-bss.1`.
+- `x86`: source-built CPU runtime and JNI bridge from `v2.2.0-bss.2`.
 
 The runtime contract is stored in
 [`contracts/bounded-gpu-runtime-contract.json`](contracts/bounded-gpu-runtime-contract.json).
@@ -33,7 +33,7 @@ Build it on Linux or WSL with:
 
 Outputs are written to `dist/bounded-gpu-runtime/`. The dedicated workflow
 builds the candidate on two clean runners and publishes only byte-identical
-outputs from a tag such as `runtime-v2.2.0-bss.1`.
+outputs from a tag such as `runtime-v2.2.0-bss.2`.
 
 ## Downloadable runtime experiment
 

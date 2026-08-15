@@ -1,11 +1,11 @@
 {
   "schemaVersion": "bss-litert-bounded-gpu-runtime-v2",
-  "coordinate": "io.github.wluhwluh.bss:litert-android:2.2.0-bss.1",
+  "coordinate": "io.github.wluhwluh.bss:litert-android:2.2.0-bss.2",
   "baseLiteRtVersion": "2.2.0",
   "androidMinApi": 26,
   "capability": {
     "schemaVersion": 1,
-    "artifactVersion": "2.2.0-bss.1",
+    "artifactVersion": "2.2.0-bss.2",
     "profileId": "gpu-opencl-bounded-fp32-v1",
     "precision": "FP32",
     "backend": "OpenCL",
